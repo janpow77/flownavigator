@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -17,9 +17,13 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.models.base import Base
 
 
-# Test against running backend container (internal port in container)
+# Flag to determine test mode
+# If TEST_AGAINST_CONTAINER is set, tests will connect to running backend
+# Otherwise, tests use ASGITransport directly against the app
+TEST_AGAINST_CONTAINER = os.getenv("TEST_AGAINST_CONTAINER", "").lower() == "true"
 TEST_BASE_URL = os.getenv("TEST_BASE_URL", "http://localhost:8000")
 
 # Shared engine and session factory - created once per test session
@@ -62,8 +66,18 @@ def event_loop_policy():
     return asyncio.DefaultEventLoopPolicy()
 
 
+@pytest_asyncio.fixture(loop_scope="session", scope="session")
+async def setup_database():
+    """Create database tables for testing."""
+    engine = get_or_create_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Don't drop tables - let CI handle cleanup
+
+
 @pytest_asyncio.fixture(loop_scope="session")
-async def test_db() -> AsyncGenerator[AsyncSession, None]:
+async def test_db(setup_database) -> AsyncGenerator[AsyncSession, None]:
     """Get database session for tests."""
     factory = get_or_create_session_factory()
     async with factory() as session:
@@ -71,55 +85,106 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def auth_headers(test_db: AsyncSession) -> dict:
-    """Auth headers with bearer token from existing user."""
+async def test_user(test_db: AsyncSession) -> dict:
+    """Create or get a test user."""
+    # Try to get existing user
     result = await test_db.execute(
         text("SELECT id, tenant_id, email, role FROM users LIMIT 1")
     )
     row = result.fetchone()
 
     if row:
-        user_data = {
+        return {
             "id": str(row[0]),
             "tenant_id": str(row[1]),
             "email": row[2],
             "role": row[3],
         }
-    else:
-        user_data = {
-            "id": "a217effe-b1a5-4e31-9dc0-18008cb1d1a5",
-            "tenant_id": "34b77286-7a3f-4f3e-899e-d61eb8c2ec54",
-            "email": "admin@test.de",
-            "role": "system_admin",
-        }
 
+    # Create a test user if none exists
+    import uuid
+
+    user_id = uuid.uuid4()
+    tenant_id = uuid.uuid4()
+
+    await test_db.execute(
+        text(
+            """
+            INSERT INTO tenants (id, name, is_active)
+            VALUES (:id, :name, true)
+            ON CONFLICT (id) DO NOTHING
+            """
+        ),
+        {"id": tenant_id, "name": "Test Tenant"},
+    )
+
+    await test_db.execute(
+        text(
+            """
+            INSERT INTO users (id, tenant_id, email, hashed_password, role, is_active)
+            VALUES (:id, :tenant_id, :email, :password, :role, true)
+            ON CONFLICT (email) DO NOTHING
+            """
+        ),
+        {
+            "id": user_id,
+            "tenant_id": tenant_id,
+            "email": "test@example.com",
+            "password": "$2b$12$dummy_hashed_password_for_testing",
+            "role": "system_admin",
+        },
+    )
+    await test_db.commit()
+
+    return {
+        "id": str(user_id),
+        "tenant_id": str(tenant_id),
+        "email": "test@example.com",
+        "role": "system_admin",
+    }
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def auth_headers(test_user: dict) -> dict:
+    """Auth headers with bearer token."""
     token = create_access_token(
         data={
-            "sub": user_data["id"],
-            "tenant_id": user_data["tenant_id"],
-            "role": user_data["role"],
+            "sub": test_user["id"],
+            "tenant_id": test_user["tenant_id"],
+            "role": test_user["role"],
         }
     )
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def client() -> AsyncGenerator[AsyncClient, None]:
-    """Create test client that connects to running backend."""
-    # Create client without connection pooling to avoid teardown issues
-    client = AsyncClient(
-        base_url=TEST_BASE_URL,
-        timeout=30.0,
-        http2=False,
-    )
+async def client(setup_database) -> AsyncGenerator[AsyncClient, None]:
+    """Create test client."""
+    if TEST_AGAINST_CONTAINER:
+        # Connect to running backend container
+        async_client = AsyncClient(
+            base_url=TEST_BASE_URL,
+            timeout=30.0,
+            http2=False,
+        )
+    else:
+        # Use ASGITransport for direct app testing
+        from app.main import app
+
+        transport = ASGITransport(app=app)
+        async_client = AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            timeout=30.0,
+        )
+
     try:
-        yield client
+        yield async_client
     finally:
-        # Close synchronously to avoid event loop issues
         try:
-            await asyncio.wait_for(client.aclose(), timeout=1.0)
+            await asyncio.wait_for(async_client.aclose(), timeout=1.0)
         except Exception:
-            pass  # Ignore cleanup errors
+            pass
 
 
 @pytest_asyncio.fixture(loop_scope="session")

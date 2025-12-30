@@ -90,8 +90,7 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # version is read from packageManager in package.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
