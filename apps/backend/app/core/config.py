@@ -32,6 +32,23 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    # File Upload
+    upload_dir: str = "/data/uploads"
+    max_upload_size: int = 50 * 1024 * 1024  # 50 MB
+    allowed_mime_types: list[str] = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/plain",
+        "text/csv",
+    ]
+
     @field_validator("database_url", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: Any) -> Any:

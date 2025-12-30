@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuditCase, updateAuditCase, type AuditCase } from '@/api/auditCases'
 import ChecklistPanel from '@/components/checklists/ChecklistPanel.vue'
+import DocumentBoxPanel from '@/components/documents/DocumentBoxPanel.vue'
 
 const props = defineProps<{
   id: string
@@ -363,17 +364,8 @@ onMounted(() => {
       </div>
 
       <!-- Tab Content: Documents -->
-      <div v-else-if="activeTab === 'documents'" class="card p-8 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Keine Dokumente</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">
-          Laden Sie Belege und Dokumente hoch.
-        </p>
-        <button class="btn-primary mt-4">
-          Dokument hochladen
-        </button>
+      <div v-else-if="activeTab === 'documents'" class="card overflow-hidden" style="min-height: 500px;">
+        <DocumentBoxPanel :case-id="id" />
       </div>
 
       <!-- Tab Content: History -->

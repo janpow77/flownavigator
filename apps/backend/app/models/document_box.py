@@ -73,6 +73,16 @@ class BoxDocument(TenantModel):
     storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
     thumbnail_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    category: Mapped[str] = mapped_column(
+        Enum(
+            "belege", "bescheide", "korrespondenz", "vertraege",
+            "nachweise", "sonstige",
+            name="document_category"
+        ),
+        nullable=False,
+        default="sonstige",
+    )
+
     uploaded_by: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
         nullable=False,
