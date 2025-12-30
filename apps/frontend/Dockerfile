@@ -1,26 +1,30 @@
-# Build stage
+# Build stage - Using pnpm for monorepo support
 FROM node:20-alpine as builder
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci
+# Copy entire monorepo for workspace dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY apps/frontend/ ./apps/frontend/
 
-# Copy source files
-COPY . .
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Build the application
-RUN npm run build
+RUN pnpm --filter @flowaudit/frontend build
 
 # Production stage
 FROM nginx:alpine as production
 
 # Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 
 # Add non-root user
 RUN addgroup -g 1001 -S appgroup && \
