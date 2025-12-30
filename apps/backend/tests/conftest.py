@@ -5,6 +5,9 @@ import os
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
+# Set TESTING environment variable to disable problematic middlewares
+os.environ["TESTING"] = "true"
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

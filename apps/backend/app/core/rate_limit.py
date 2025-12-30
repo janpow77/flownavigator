@@ -1,5 +1,7 @@
 """Rate limiting configuration using slowapi."""
 
+import os
+
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -8,6 +10,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+
+# Disable rate limiting in tests (SlowAPIMiddleware uses BaseHTTPMiddleware
+# which has known issues with async tests)
+TESTING = os.getenv("TESTING", "").lower() == "true"
 
 
 def get_user_identifier(request: Request) -> str:
@@ -44,6 +50,10 @@ def rate_limit_exceeded_handler(
 
 def setup_rate_limiting(app: FastAPI) -> None:
     """Configure rate limiting for the FastAPI app."""
+    if TESTING:
+        # Skip rate limiting middleware in tests to avoid BaseHTTPMiddleware issues
+        return
+
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)

@@ -51,9 +51,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://flowaudit:test_password@localhost:5432/flowaudit_test
           SECRET_KEY: test-secret-key-for-ci-minimum-32-chars
           DEBUG: "true"
+          TESTING: "true"
         run: |
-          pytest tests/ -v --tb=short || echo "Some tests failed - see logs above"
-        continue-on-error: true
+          pytest tests/ -v --tb=short
 
   # Backend Code Quality
   backend-quality:
