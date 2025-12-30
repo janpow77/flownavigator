@@ -11,6 +11,13 @@ from app.models.group_query import (
     GroupQueryAttachment,
 )
 from app.models.document_box import DocumentBox, BoxDocument
+from app.models.audit_case import (
+    AuditCase,
+    AuditCaseChecklist,
+    AuditCaseFinding,
+    FiscalYear,
+    ChecklistTemplate,
+)
 
 __all__ = [
     "TenantModel",
@@ -24,4 +31,9 @@ __all__ = [
     "GroupQueryAttachment",
     "DocumentBox",
     "BoxDocument",
+    "AuditCase",
+    "AuditCaseChecklist",
+    "AuditCaseFinding",
+    "FiscalYear",
+    "ChecklistTemplate",
 ]

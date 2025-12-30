@@ -54,3 +54,8 @@ class Tenant(Base, TimestampMixin):
         remote_side=[id],
         foreign_keys="[Tenant.parent_id]",
     )
+    audit_cases: Mapped[list["AuditCase"]] = relationship(  # type: ignore
+        "AuditCase",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+    )

@@ -17,7 +17,9 @@ class DocumentBox(TenantModel):
 
     audit_case_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False),
+        ForeignKey("audit_cases.id", ondelete="CASCADE"),
         nullable=False,
+        unique=True,
         index=True,
     )
 
@@ -37,6 +39,10 @@ class DocumentBox(TenantModel):
     ai_config: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Relationships
+    audit_case: Mapped["AuditCase"] = relationship(  # type: ignore
+        "AuditCase",
+        back_populates="document_box",
+    )
     documents: Mapped[list["BoxDocument"]] = relationship(
         "BoxDocument",
         back_populates="box",

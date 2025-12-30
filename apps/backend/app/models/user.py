@@ -59,6 +59,21 @@ class User(Base, TimestampMixin):
         back_populates="user",
         uselist=False,
     )
+    primary_audits: Mapped[list["AuditCase"]] = relationship(  # type: ignore
+        "AuditCase",
+        foreign_keys="[AuditCase.primary_auditor_id]",
+        back_populates="primary_auditor",
+    )
+    secondary_audits: Mapped[list["AuditCase"]] = relationship(  # type: ignore
+        "AuditCase",
+        foreign_keys="[AuditCase.secondary_auditor_id]",
+        back_populates="secondary_auditor",
+    )
+    led_audits: Mapped[list["AuditCase"]] = relationship(  # type: ignore
+        "AuditCase",
+        foreign_keys="[AuditCase.team_leader_id]",
+        back_populates="team_leader",
+    )
 
     @property
     def full_name(self) -> str:
