@@ -1,4 +1,5 @@
 """Preferences Pydantic Schemas"""
+
 from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
@@ -58,7 +59,9 @@ class UserPreferencesSchema(BaseModel):
     navigation: NavigationPreferences = Field(default_factory=NavigationPreferences)
     dashboard: DashboardPreferences = Field(default_factory=DashboardPreferences)
     modulePreferences: dict = Field(default_factory=dict)
-    notifications: NotificationPreferences = Field(default_factory=NotificationPreferences)
+    notifications: NotificationPreferences = Field(
+        default_factory=NotificationPreferences
+    )
     locale: LocalePreferences = Field(default_factory=LocalePreferences)
     shortcuts: ShortcutPreferences = Field(default_factory=ShortcutPreferences)
 
@@ -70,6 +73,7 @@ class UserPreferencesSchema(BaseModel):
 
 class UserPreferencesUpdate(BaseModel):
     """Schema for updating preferences - all fields optional"""
+
     appearance: Optional[AppearancePreferences] = None
     navigation: Optional[NavigationPreferences] = None
     dashboard: Optional[DashboardPreferences] = None

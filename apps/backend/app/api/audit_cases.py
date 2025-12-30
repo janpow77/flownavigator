@@ -32,6 +32,7 @@ router = APIRouter(prefix="/audit-cases", tags=["Audit Cases"])
 
 # --- Audit Cases CRUD ---
 
+
 @router.get("", response_model=AuditCaseListResponse)
 async def list_audit_cases(
     page: int = Query(1, ge=1),
@@ -57,9 +58,9 @@ async def list_audit_cases(
     if search:
         search_pattern = f"%{search}%"
         query = query.where(
-            (AuditCase.case_number.ilike(search_pattern)) |
-            (AuditCase.project_name.ilike(search_pattern)) |
-            (AuditCase.beneficiary_name.ilike(search_pattern))
+            (AuditCase.case_number.ilike(search_pattern))
+            | (AuditCase.project_name.ilike(search_pattern))
+            | (AuditCase.beneficiary_name.ilike(search_pattern))
         )
 
     # Count total
@@ -194,24 +195,32 @@ async def get_audit_case(
         )
 
     # Count related items
-    checklists_count = await db.scalar(
-        select(func.count())
-        .where(AuditCaseChecklist.audit_case_id == case_id)
-    ) or 0
+    checklists_count = (
+        await db.scalar(
+            select(func.count()).where(AuditCaseChecklist.audit_case_id == case_id)
+        )
+        or 0
+    )
 
-    findings_count = await db.scalar(
-        select(func.count())
-        .where(AuditCaseFinding.audit_case_id == case_id)
-    ) or 0
+    findings_count = (
+        await db.scalar(
+            select(func.count()).where(AuditCaseFinding.audit_case_id == case_id)
+        )
+        or 0
+    )
 
     response = AuditCaseDetailResponse.model_validate(audit_case)
     response.checklists_count = checklists_count
     response.findings_count = findings_count
 
     if audit_case.primary_auditor:
-        response.primary_auditor = AuditorInfo.model_validate(audit_case.primary_auditor)
+        response.primary_auditor = AuditorInfo.model_validate(
+            audit_case.primary_auditor
+        )
     if audit_case.secondary_auditor:
-        response.secondary_auditor = AuditorInfo.model_validate(audit_case.secondary_auditor)
+        response.secondary_auditor = AuditorInfo.model_validate(
+            audit_case.secondary_auditor
+        )
     if audit_case.team_leader:
         response.team_leader = AuditorInfo.model_validate(audit_case.team_leader)
 
@@ -248,7 +257,10 @@ async def update_audit_case(
     for field, value in update_data.items():
         old_value = getattr(audit_case, field)
         if old_value != value:
-            changes[field] = {"old": str(old_value) if old_value else None, "new": str(value) if value else None}
+            changes[field] = {
+                "old": str(old_value) if old_value else None,
+                "new": str(value) if value else None,
+            }
         setattr(audit_case, field, value)
 
     # Log status changes specifically
@@ -326,6 +338,7 @@ async def delete_audit_case(
 
 
 # --- Checklists ---
+
 
 @router.get("/{case_id}/checklists", response_model=list[ChecklistSummary])
 async def list_checklists(
@@ -408,6 +421,7 @@ async def update_checklist(
         if data.status == "completed":
             checklist.completed_by = current_user.id
             from datetime import datetime, timezone
+
             checklist.completed_at = datetime.now(timezone.utc)
 
     await db.commit()

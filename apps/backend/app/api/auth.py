@@ -71,7 +71,9 @@ async def login(
     return Token(access_token=access_token, user=user_response)
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),

@@ -9,25 +9,27 @@ from pydantic import BaseModel, Field, ConfigDict
 # --- Question Types ---
 
 QuestionType = Literal[
-    "text",           # Freitext
-    "textarea",       # Mehrzeiliger Text
-    "number",         # Zahl
-    "currency",       # Währungsbetrag
-    "date",           # Datum
-    "yes_no",         # Ja/Nein
-    "yes_no_na",      # Ja/Nein/N.A.
-    "select",         # Auswahl (Single)
-    "multiselect",    # Mehrfachauswahl
-    "rating",         # Bewertung (1-5)
-    "file",           # Dateianhang
-    "section",        # Abschnittsüberschrift (keine Eingabe)
+    "text",  # Freitext
+    "textarea",  # Mehrzeiliger Text
+    "number",  # Zahl
+    "currency",  # Währungsbetrag
+    "date",  # Datum
+    "yes_no",  # Ja/Nein
+    "yes_no_na",  # Ja/Nein/N.A.
+    "select",  # Auswahl (Single)
+    "multiselect",  # Mehrfachauswahl
+    "rating",  # Bewertung (1-5)
+    "file",  # Dateianhang
+    "section",  # Abschnittsüberschrift (keine Eingabe)
 ]
 
 
 # --- Question Schema ---
 
+
 class QuestionOption(BaseModel):
     """Option für Select/Multiselect Fragen."""
+
     value: str
     label: str
     description: Optional[str] = None
@@ -54,7 +56,9 @@ class QuestionSchema(BaseModel):
     options: Optional[list[QuestionOption]] = None
 
     # Bedingte Anzeige
-    condition: Optional[dict[str, Any]] = None  # z.B. {"question_id": "q1", "value": "yes"}
+    condition: Optional[dict[str, Any]] = (
+        None  # z.B. {"question_id": "q1", "value": "yes"}
+    )
 
     # Gruppierung
     group: Optional[str] = None
@@ -77,6 +81,7 @@ class SectionSchema(BaseModel):
 
 # --- Template Schemas ---
 
+
 class ChecklistTemplateBase(BaseModel):
     """Base schema for checklist template."""
 
@@ -90,7 +95,7 @@ class ChecklistTemplateCreate(ChecklistTemplateBase):
 
     structure: dict[str, Any] = Field(
         default_factory=lambda: {"sections": [], "settings": {}},
-        description="Template structure with sections and questions"
+        description="Template structure with sections and questions",
     )
 
 
@@ -139,6 +144,7 @@ class ChecklistTemplateSummary(BaseModel):
 
 
 # --- Checklist Instance Schemas ---
+
 
 class QuestionResponse(BaseModel):
     """Response to a single question."""
@@ -207,6 +213,7 @@ class ChecklistSummaryResponse(BaseModel):
 
 
 # --- Default Template Structures ---
+
 
 def get_default_main_checklist() -> dict[str, Any]:
     """Get default structure for main checklist (Hauptcheckliste)."""
@@ -336,8 +343,14 @@ def get_default_main_checklist() -> dict[str, Any]:
                         "required": True,
                         "options": [
                             {"value": "no_findings", "label": "Keine Feststellungen"},
-                            {"value": "findings_minor", "label": "Geringfügige Feststellungen"},
-                            {"value": "findings_major", "label": "Wesentliche Feststellungen"},
+                            {
+                                "value": "findings_minor",
+                                "label": "Geringfügige Feststellungen",
+                            },
+                            {
+                                "value": "findings_major",
+                                "label": "Wesentliche Feststellungen",
+                            },
                             {"value": "irregularity", "label": "Unregelmäßigkeit"},
                         ],
                         "order": 1,

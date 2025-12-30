@@ -240,7 +240,11 @@ async def upload_document(
 
     # Log the upload
     file_size_kb = file_size / 1024
-    size_str = f"{file_size_kb:.1f} KB" if file_size_kb < 1024 else f"{file_size_kb/1024:.1f} MB"
+    size_str = (
+        f"{file_size_kb:.1f} KB"
+        if file_size_kb < 1024
+        else f"{file_size_kb/1024:.1f} MB"
+    )
     await log_audit_event(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -350,7 +354,9 @@ async def update_document(
             "rejected": "Abgelehnt",
             "unclear": "Unklar",
         }
-        new_status_label = status_labels.get(update_data["manual_status"], update_data["manual_status"])
+        new_status_label = status_labels.get(
+            update_data["manual_status"], update_data["manual_status"]
+        )
         await log_audit_event(
             db=db,
             tenant_id=current_user.tenant_id,

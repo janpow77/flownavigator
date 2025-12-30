@@ -1,4 +1,5 @@
 """User Preferences API Endpoints"""
+
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +16,7 @@ router = APIRouter(prefix="/preferences", tags=["preferences"])
 
 @router.get("", response_model=UserPreferencesSchema)
 async def get_preferences(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get current user's preferences"""
     result = await db.execute(
@@ -35,7 +35,7 @@ async def get_preferences(
             modulePreferences=defaults["module_preferences"],
             notifications=defaults["notifications"],
             locale=defaults["locale"],
-            shortcuts=defaults["shortcuts"]
+            shortcuts=defaults["shortcuts"],
         )
 
     return UserPreferencesSchema(
@@ -48,7 +48,9 @@ async def get_preferences(
         notifications=preferences.notifications,
         locale=preferences.locale,
         shortcuts=preferences.shortcuts,
-        updatedAt=preferences.updated_at.isoformat() if preferences.updated_at else None
+        updatedAt=(
+            preferences.updated_at.isoformat() if preferences.updated_at else None
+        ),
     )
 
 
@@ -56,7 +58,7 @@ async def get_preferences(
 async def update_preferences(
     preferences_update: UserPreferencesUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update current user's preferences"""
     result = await db.execute(
@@ -76,7 +78,7 @@ async def update_preferences(
             module_preferences=defaults["module_preferences"],
             notifications=defaults["notifications"],
             locale=defaults["locale"],
-            shortcuts=defaults["shortcuts"]
+            shortcuts=defaults["shortcuts"],
         )
         db.add(preferences)
 
@@ -93,10 +95,16 @@ async def update_preferences(
         preferences.dashboard = {**preferences.dashboard, **update_data["dashboard"]}
 
     if "modulePreferences" in update_data and update_data["modulePreferences"]:
-        preferences.module_preferences = {**preferences.module_preferences, **update_data["modulePreferences"]}
+        preferences.module_preferences = {
+            **preferences.module_preferences,
+            **update_data["modulePreferences"],
+        }
 
     if "notifications" in update_data and update_data["notifications"]:
-        preferences.notifications = {**preferences.notifications, **update_data["notifications"]}
+        preferences.notifications = {
+            **preferences.notifications,
+            **update_data["notifications"],
+        }
 
     if "locale" in update_data and update_data["locale"]:
         preferences.locale = {**preferences.locale, **update_data["locale"]}
@@ -117,14 +125,15 @@ async def update_preferences(
         notifications=preferences.notifications,
         locale=preferences.locale,
         shortcuts=preferences.shortcuts,
-        updatedAt=preferences.updated_at.isoformat() if preferences.updated_at else None
+        updatedAt=(
+            preferences.updated_at.isoformat() if preferences.updated_at else None
+        ),
     )
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def reset_preferences(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Reset preferences to defaults"""
     result = await db.execute(

@@ -93,9 +93,7 @@ async def list_findings(
     """List findings for an audit case."""
     await get_audit_case_or_404(case_id, db, current_user)
 
-    query = select(AuditCaseFinding).where(
-        AuditCaseFinding.audit_case_id == case_id
-    )
+    query = select(AuditCaseFinding).where(AuditCaseFinding.audit_case_id == case_id)
 
     if status:
         query = query.where(AuditCaseFinding.status == status)
@@ -198,7 +196,10 @@ async def update_finding(
     for key, value in update_data.items():
         old_value = getattr(finding, key)
         if old_value != value:
-            changes[key] = {"old": str(old_value) if old_value else None, "new": str(value) if value else None}
+            changes[key] = {
+                "old": str(old_value) if old_value else None,
+                "new": str(value) if value else None,
+            }
         setattr(finding, key, value)
 
     if changes:

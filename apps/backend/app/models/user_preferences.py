@@ -1,4 +1,5 @@
 """User Preferences Model"""
+
 from uuid import uuid4
 
 from sqlalchemy import ForeignKey
@@ -58,37 +59,39 @@ class UserPreferences(Base, TimestampMixin):
                 "accentColor": "blue",
                 "fontSize": "medium",
                 "reducedMotion": False,
-                "highContrast": False
+                "highContrast": False,
             },
             "navigation": {
                 "defaultView": "tiles",
                 "sidebarCollapsed": False,
                 "enableAnimations": True,
                 "enableHoverEffects": True,
-                "showModuleBadges": True
+                "showModuleBadges": True,
             },
             "dashboard": {
                 "startPage": "/dashboard",
-                "visibleWidgets": ["active_audits", "appointments", "tasks", "activities"],
+                "visibleWidgets": [
+                    "active_audits",
+                    "appointments",
+                    "tasks",
+                    "activities",
+                ],
                 "widgetOrder": ["active_audits", "appointments", "tasks", "activities"],
-                "compactMode": False
+                "compactMode": False,
             },
             "module_preferences": {},
             "notifications": {
                 "enabled": True,
                 "sound": False,
                 "desktop": True,
-                "emailDigest": "daily"
+                "emailDigest": "daily",
             },
             "locale": {
                 "language": "de",
                 "dateFormat": "DD.MM.YYYY",
                 "timeFormat": "24h",
                 "timezone": "Europe/Berlin",
-                "numberFormat": "de-DE"
+                "numberFormat": "de-DE",
             },
-            "shortcuts": {
-                "enabled": True,
-                "custom": {}
-            }
+            "shortcuts": {"enabled": True, "custom": {}},
         }

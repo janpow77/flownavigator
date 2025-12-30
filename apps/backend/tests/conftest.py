@@ -128,10 +128,14 @@ async def cleanup_test_cases(test_db: AsyncSession):
     yield
     try:
         await test_db.execute(
-            text("DELETE FROM audit_case_findings WHERE audit_case_id IN (SELECT id FROM audit_cases WHERE case_number LIKE 'TEST-%')")
+            text(
+                "DELETE FROM audit_case_findings WHERE audit_case_id IN (SELECT id FROM audit_cases WHERE case_number LIKE 'TEST-%')"
+            )
         )
         await test_db.execute(
-            text("DELETE FROM audit_logs WHERE entity_id IN (SELECT id FROM audit_cases WHERE case_number LIKE 'TEST-%')")
+            text(
+                "DELETE FROM audit_logs WHERE entity_id IN (SELECT id FROM audit_cases WHERE case_number LIKE 'TEST-%')"
+            )
         )
         await test_db.execute(
             text("DELETE FROM audit_cases WHERE case_number LIKE 'TEST-%'")

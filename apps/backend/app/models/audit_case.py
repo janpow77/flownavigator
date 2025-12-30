@@ -5,8 +5,15 @@ from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, Enum, ForeignKey, Integer,
-    Numeric, String, Text,
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,19 +52,25 @@ class AuditCase(Base, TimestampMixin):
     beneficiary_name: Mapped[str] = mapped_column(String(500), nullable=False)
 
     # Finanzielle Daten
-    approved_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
-    audited_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
-    irregular_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    approved_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+    audited_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+    irregular_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
 
     # Status
     status: Mapped[str] = mapped_column(
         Enum(
-            "draft",           # Entwurf
-            "in_progress",     # In Bearbeitung
-            "review",          # Prüfung durch Teamleiter
-            "completed",       # Abgeschlossen
-            "archived",        # Archiviert
-            name="audit_case_status"
+            "draft",  # Entwurf
+            "in_progress",  # In Bearbeitung
+            "review",  # Prüfung durch Teamleiter
+            "completed",  # Abgeschlossen
+            "archived",  # Archiviert
+            name="audit_case_status",
         ),
         default="draft",
         nullable=False,
@@ -67,10 +80,10 @@ class AuditCase(Base, TimestampMixin):
     # Prüfungsart
     audit_type: Mapped[str] = mapped_column(
         Enum(
-            "operation",       # Vorhabenprüfung
-            "system",          # Systemprüfung
-            "accounts",        # Rechnungslegungsprüfung
-            name="audit_type"
+            "operation",  # Vorhabenprüfung
+            "system",  # Systemprüfung
+            "accounts",  # Rechnungslegungsprüfung
+            name="audit_type",
         ),
         default="operation",
         nullable=False,
@@ -100,11 +113,11 @@ class AuditCase(Base, TimestampMixin):
     # Prüfungsergebnis
     result: Mapped[str | None] = mapped_column(
         Enum(
-            "no_findings",        # Keine Feststellungen
-            "findings_minor",     # Geringfügige Feststellungen
-            "findings_major",     # Wesentliche Feststellungen
-            "irregularity",       # Unregelmäßigkeit
-            name="audit_result"
+            "no_findings",  # Keine Feststellungen
+            "findings_minor",  # Geringfügige Feststellungen
+            "findings_major",  # Wesentliche Feststellungen
+            "irregularity",  # Unregelmäßigkeit
+            name="audit_result",
         ),
         nullable=True,
     )
@@ -178,12 +191,12 @@ class AuditCaseChecklist(Base, TimestampMixin):
     # Typ
     checklist_type: Mapped[str] = mapped_column(
         Enum(
-            "main",          # Hauptcheckliste
-            "procurement",   # Vergabeprüfung
-            "subsidy",       # Beihilfeprüfung
-            "eligibility",   # Förderfähigkeit
-            "custom",        # Benutzerdefiniert
-            name="checklist_type"
+            "main",  # Hauptcheckliste
+            "procurement",  # Vergabeprüfung
+            "subsidy",  # Beihilfeprüfung
+            "eligibility",  # Förderfähigkeit
+            "custom",  # Benutzerdefiniert
+            name="checklist_type",
         ),
         default="main",
         nullable=False,
@@ -191,12 +204,7 @@ class AuditCaseChecklist(Base, TimestampMixin):
 
     # Status
     status: Mapped[str] = mapped_column(
-        Enum(
-            "not_started",
-            "in_progress",
-            "completed",
-            name="checklist_status"
-        ),
+        Enum("not_started", "in_progress", "completed", name="checklist_status"),
         default="not_started",
         nullable=False,
     )
@@ -250,11 +258,11 @@ class AuditCaseFinding(Base, TimestampMixin):
     # Typ
     finding_type: Mapped[str] = mapped_column(
         Enum(
-            "irregularity",      # Unregelmäßigkeit
-            "deficiency",        # Mangel
-            "recommendation",    # Empfehlung
-            "observation",       # Beobachtung
-            name="finding_type"
+            "irregularity",  # Unregelmäßigkeit
+            "deficiency",  # Mangel
+            "recommendation",  # Empfehlung
+            "observation",  # Beobachtung
+            name="finding_type",
         ),
         nullable=False,
     )
@@ -262,13 +270,13 @@ class AuditCaseFinding(Base, TimestampMixin):
     # Fehlerart (EU-Kategorien)
     error_category: Mapped[str | None] = mapped_column(
         Enum(
-            "ineligible_expenditure",    # Nicht förderfähige Ausgaben
-            "public_procurement",        # Vergabefehler
-            "missing_documents",         # Fehlende Unterlagen
-            "calculation_error",         # Rechenfehler
-            "double_funding",            # Doppelfinanzierung
-            "other",                     # Sonstiges
-            name="error_category"
+            "ineligible_expenditure",  # Nicht förderfähige Ausgaben
+            "public_procurement",  # Vergabefehler
+            "missing_documents",  # Fehlende Unterlagen
+            "calculation_error",  # Rechenfehler
+            "double_funding",  # Doppelfinanzierung
+            "other",  # Sonstiges
+            name="error_category",
         ),
         nullable=True,
     )
@@ -278,7 +286,9 @@ class AuditCaseFinding(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Finanzieller Impact
-    financial_impact: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    financial_impact: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
     is_systemic: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Status der Feststellung
@@ -286,10 +296,10 @@ class AuditCaseFinding(Base, TimestampMixin):
         Enum(
             "draft",
             "confirmed",
-            "disputed",        # Widerspruch
-            "resolved",        # Behoben
-            "withdrawn",       # Zurückgezogen
-            name="finding_status"
+            "disputed",  # Widerspruch
+            "resolved",  # Behoben
+            "withdrawn",  # Zurückgezogen
+            name="finding_status",
         ),
         default="draft",
         nullable=False,
@@ -340,11 +350,11 @@ class FiscalYear(Base, TimestampMixin):
 
     status: Mapped[str] = mapped_column(
         Enum(
-            "planning",    # Planung
-            "active",      # Aktiv
-            "closing",     # Abschluss
-            "closed",      # Abgeschlossen
-            name="fiscal_year_status"
+            "planning",  # Planung
+            "active",  # Aktiv
+            "closing",  # Abschluss
+            "closed",  # Abgeschlossen
+            name="fiscal_year_status",
         ),
         default="planning",
         nullable=False,
@@ -390,7 +400,7 @@ class ChecklistTemplate(Base, TimestampMixin):
             "eligibility",
             "system",
             "custom",
-            name="template_checklist_type"
+            name="template_checklist_type",
         ),
         default="main",
         nullable=False,
@@ -401,12 +411,7 @@ class ChecklistTemplate(Base, TimestampMixin):
 
     # Status
     status: Mapped[str] = mapped_column(
-        Enum(
-            "draft",
-            "published",
-            "archived",
-            name="template_status"
-        ),
+        Enum("draft", "published", "archived", name="template_status"),
         default="draft",
         nullable=False,
     )

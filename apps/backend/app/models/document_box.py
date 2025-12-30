@@ -75,9 +75,13 @@ class BoxDocument(TenantModel):
 
     category: Mapped[str] = mapped_column(
         Enum(
-            "belege", "bescheide", "korrespondenz", "vertraege",
-            "nachweise", "sonstige",
-            name="document_category"
+            "belege",
+            "bescheide",
+            "korrespondenz",
+            "vertraege",
+            "nachweise",
+            "sonstige",
+            name="document_category",
         ),
         nullable=False,
         default="sonstige",

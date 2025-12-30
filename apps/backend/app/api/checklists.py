@@ -31,6 +31,7 @@ router = APIRouter(prefix="/checklists", tags=["Checklists"])
 
 # --- Template Endpoints ---
 
+
 @router.get("/templates", response_model=ChecklistTemplateListResponse)
 async def list_templates(
     checklist_type: Optional[str] = None,
@@ -100,7 +101,9 @@ async def get_default_templates(
     }
 
 
-@router.post("/templates/create-defaults", response_model=list[ChecklistTemplateResponse])
+@router.post(
+    "/templates/create-defaults", response_model=list[ChecklistTemplateResponse]
+)
 async def create_default_templates(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -226,8 +229,9 @@ async def delete_template(
 
     # Check if template is in use
     usage_count = await db.scalar(
-        select(func.count())
-        .where(AuditCaseChecklist.checklist_template_id == template_id)
+        select(func.count()).where(
+            AuditCaseChecklist.checklist_template_id == template_id
+        )
     )
 
     if usage_count and usage_count > 0:
@@ -241,6 +245,7 @@ async def delete_template(
 
 
 # --- Audit Case Checklist Endpoints ---
+
 
 @router.get("/audit-case/{case_id}", response_model=list[ChecklistSummaryResponse])
 async def list_case_checklists(
@@ -261,7 +266,10 @@ async def list_case_checklists(
 
     query = (
         select(AuditCaseChecklist, ChecklistTemplate.name)
-        .outerjoin(ChecklistTemplate, AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id)
+        .outerjoin(
+            ChecklistTemplate,
+            AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id,
+        )
         .where(AuditCaseChecklist.audit_case_id == case_id)
         .order_by(AuditCaseChecklist.created_at)
     )
@@ -278,7 +286,9 @@ async def list_case_checklists(
     return checklists
 
 
-@router.post("/audit-case/{case_id}", response_model=ChecklistInstanceResponse, status_code=201)
+@router.post(
+    "/audit-case/{case_id}", response_model=ChecklistInstanceResponse, status_code=201
+)
 async def add_checklist_to_case(
     case_id: str,
     data: ChecklistCreateFromTemplate,
@@ -340,7 +350,9 @@ async def add_checklist_to_case(
     return response
 
 
-@router.get("/audit-case/{case_id}/{checklist_id}", response_model=ChecklistInstanceResponse)
+@router.get(
+    "/audit-case/{case_id}/{checklist_id}", response_model=ChecklistInstanceResponse
+)
 async def get_case_checklist(
     case_id: str,
     checklist_id: str,
@@ -350,7 +362,10 @@ async def get_case_checklist(
     """Get a specific checklist with template structure."""
     query = (
         select(AuditCaseChecklist, ChecklistTemplate)
-        .outerjoin(ChecklistTemplate, AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id)
+        .outerjoin(
+            ChecklistTemplate,
+            AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id,
+        )
         .where(
             AuditCaseChecklist.id == checklist_id,
             AuditCaseChecklist.audit_case_id == case_id,
@@ -373,7 +388,9 @@ async def get_case_checklist(
     return response
 
 
-@router.patch("/audit-case/{case_id}/{checklist_id}", response_model=ChecklistInstanceResponse)
+@router.patch(
+    "/audit-case/{case_id}/{checklist_id}", response_model=ChecklistInstanceResponse
+)
 async def update_case_checklist(
     case_id: str,
     checklist_id: str,
@@ -384,7 +401,10 @@ async def update_case_checklist(
     """Update checklist responses."""
     query = (
         select(AuditCaseChecklist, ChecklistTemplate)
-        .outerjoin(ChecklistTemplate, AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id)
+        .outerjoin(
+            ChecklistTemplate,
+            AuditCaseChecklist.checklist_template_id == ChecklistTemplate.id,
+        )
         .where(
             AuditCaseChecklist.id == checklist_id,
             AuditCaseChecklist.audit_case_id == case_id,

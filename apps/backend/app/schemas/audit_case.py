@@ -16,6 +16,7 @@ AuditResult = str  # no_findings, findings_minor, findings_major, irregularity
 
 # --- Base Schemas ---
 
+
 class AuditCaseBase(BaseModel):
     """Base schema for audit case."""
 
@@ -122,6 +123,7 @@ class AuditCaseSummary(BaseModel):
 
 # --- Auditor Schemas ---
 
+
 class AuditorInfo(BaseModel):
     """Minimal auditor info."""
 
@@ -147,6 +149,7 @@ class AuditCaseDetailResponse(AuditCaseResponse):
 
 # --- Finding Schemas ---
 
+
 class FindingBase(BaseModel):
     """Base schema for finding."""
 
@@ -163,6 +166,7 @@ class FindingBase(BaseModel):
 
 class FindingCreate(FindingBase):
     """Schema for creating a finding."""
+
     pass
 
 
@@ -206,6 +210,7 @@ class FindingResponse(FindingBase):
 
 # --- Checklist Schemas ---
 
+
 class ChecklistSummary(BaseModel):
     """Summary schema for checklist."""
 
@@ -247,6 +252,7 @@ class ChecklistUpdate(BaseModel):
 
 
 # --- Statistics ---
+
 
 class AuditCaseStatistics(BaseModel):
     """Statistics for audit cases."""
