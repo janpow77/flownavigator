@@ -79,6 +79,13 @@ interface CreateAuditCaseData {
   internal_notes?: string
 }
 
+interface UpdateAuditCaseData extends Partial<CreateAuditCaseData> {
+  status?: string
+  result?: string
+  irregular_amount?: number
+  requires_follow_up?: boolean
+}
+
 function getAuthHeaders(): Record<string, string> {
   const authStore = useAuthStore()
   return {
@@ -129,7 +136,7 @@ export async function createAuditCase(data: CreateAuditCaseData): Promise<AuditC
   return handleResponse<AuditCase>(response)
 }
 
-export async function updateAuditCase(id: string, data: Partial<CreateAuditCaseData>): Promise<AuditCase> {
+export async function updateAuditCase(id: string, data: UpdateAuditCaseData): Promise<AuditCase> {
   const response = await fetch(`${API_BASE}/audit-cases/${id}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),

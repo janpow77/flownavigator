@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuditCase, updateAuditCase, type AuditCase } from '@/api/auditCases'
+import ChecklistPanel from '@/components/checklists/ChecklistPanel.vue'
 
 const props = defineProps<{
   id: string
@@ -343,17 +344,8 @@ onMounted(() => {
       </div>
 
       <!-- Tab Content: Checklists -->
-      <div v-else-if="activeTab === 'checklists'" class="card p-8 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Keine Checklisten</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">
-          Fügen Sie eine Checkliste hinzu, um mit der Prüfung zu beginnen.
-        </p>
-        <button class="btn-primary mt-4">
-          Checkliste hinzufügen
-        </button>
+      <div v-else-if="activeTab === 'checklists'" class="card overflow-hidden" style="min-height: 500px;">
+        <ChecklistPanel :case-id="id" />
       </div>
 
       <!-- Tab Content: Findings -->

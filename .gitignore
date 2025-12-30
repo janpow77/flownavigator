@@ -8,6 +8,9 @@ build/
 *.egg-info/
 __pycache__/
 *.pyc
+*.tsbuildinfo
+*.d.ts
+!src/**/*.d.ts
 
 # Environment
 .env
