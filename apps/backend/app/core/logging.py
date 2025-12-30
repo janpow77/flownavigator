@@ -2,12 +2,79 @@
 
 import logging
 import sys
-from typing import Any
+import uuid
+from typing import Any, Callable
 
 import structlog
 from structlog.types import Processor
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import settings
+
+
+class LoggingMiddleware:
+    """Pure ASGI middleware for request logging.
+
+    This avoids BaseHTTPMiddleware which has known issues with
+    background tasks and async cleanup in tests.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request_id = str(uuid.uuid4())
+
+        # Extract request info
+        method = scope.get("method", "")
+        path = scope.get("path", "")
+
+        # Check for X-Request-ID header
+        headers = dict(scope.get("headers", []))
+        if b"x-request-id" in headers:
+            request_id = headers[b"x-request-id"].decode()
+
+        # Bind context for structured logging
+        bind_request_context(
+            request_id=request_id,
+            method=method,
+            path=path,
+        )
+
+        logger = get_logger(__name__)
+
+        # Get client IP
+        client = scope.get("client")
+        client_ip = client[0] if client else "unknown"
+
+        logger.info("Request started", client_ip=client_ip)
+
+        status_code = 500  # Default in case of error
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 500)
+                # Add X-Request-ID header
+                headers = list(message.get("headers", []))
+                headers.append((b"x-request-id", request_id.encode()))
+                message["headers"] = headers
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_wrapper)
+            logger.info("Request completed", status_code=status_code)
+        except Exception as exc:
+            logger.exception("Request failed", error=str(exc))
+            raise
+        finally:
+            clear_request_context()
 
 
 def setup_logging() -> None:
