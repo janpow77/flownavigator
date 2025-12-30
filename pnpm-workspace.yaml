@@ -1,0 +1,6 @@
+packages:
+  - "packages/core/*"
+  - "packages/domain/*"
+  - "packages/documents/*"
+  - "packages/adapters/*"
+  - "apps/*"

@@ -1,0 +1,151 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "error": "Error",
+    "success": "Success",
+    "view": "View"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "loginError": "Login failed",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "groupQueries": "Group Queries",
+    "auditCases": "Audit Cases",
+    "systemAudits": "System Audits",
+    "reports": "Reports",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {name}!",
+    "overview": "Overview",
+    "recentActivity": "Recent Activity",
+    "openTasks": "Open Tasks",
+    "statistics": "Statistics",
+    "quickActions": "Quick Actions"
+  },
+  "groupQueries": {
+    "title": "Group Queries",
+    "description": "Manage your group queries and track response progress.",
+    "newQuery": "New Query",
+    "name": "Name",
+    "status": "Status",
+    "dueDate": "Due Date",
+    "progress": "Progress",
+    "allStatus": "All Status",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "statusDraft": "Draft",
+    "category": {
+      "annual_report": "Annual Report",
+      "quarterly_report": "Quarterly Report",
+      "ad_hoc": "Ad-hoc Query",
+      "system_audit_summary": "System Audit Summary",
+      "statistics": "Statistical Survey"
+    },
+    "deadline": "Deadline",
+    "responses": "Responses"
+  },
+  "auditCases": {
+    "title": "Audit Cases",
+    "description": "Overview of all audit cases and their status.",
+    "newCase": "New Audit Case",
+    "caseId": "Case ID",
+    "project": "Project",
+    "type": "Type",
+    "status": "Status",
+    "findings": "Findings",
+    "totalCases": "Total",
+    "totalFindings": "Findings",
+    "allStatus": "All Status",
+    "allTypes": "All Types",
+    "statusOpen": "Open",
+    "statusInProgress": "In Progress",
+    "statusReview": "Review",
+    "statusCompleted": "Completed",
+    "typeSystem": "System Audit",
+    "typeProject": "Project Audit",
+    "operation": "Operation",
+    "amount": "Amount"
+  },
+  "documentBox": {
+    "title": "Document Box",
+    "upload": "Upload Documents",
+    "verify": "Verify",
+    "verified": "Verified",
+    "rejected": "Rejected",
+    "pending": "Pending",
+    "aiVerification": "AI Verification",
+    "runAiCheck": "Run AI Check"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Customize your personal settings and preferences.",
+    "profile": "Profile",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "appearance": "Appearance",
+    "darkMode": "Dark Mode",
+    "darkModeDescription": "Use dark color scheme for the interface.",
+    "language": "Language",
+    "languageDescription": "Choose your preferred language.",
+    "theme": "Theme",
+    "notifications": "Notifications",
+    "emailNotifications": "Email Notifications",
+    "emailNotificationsDescription": "Receive email notifications for important events.",
+    "systemNotifications": "System Notifications",
+    "systemNotificationsDescription": "Receive notifications in the browser.",
+    "security": "Security",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "roles": {
+    "system_admin": "System Administrator",
+    "group_admin": "Group Administrator",
+    "authority_head": "Authority Head",
+    "team_leader": "Team Leader",
+    "auditor": "Auditor",
+    "viewer": "Viewer"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Invalid email address",
+    "minLength": "Minimum {min} characters required",
+    "maxLength": "Maximum {max} characters allowed"
+  },
+  "errors": {
+    "pageNotFound": "Page Not Found",
+    "pageNotFoundDescription": "The requested page does not exist or has been moved.",
+    "backToDashboard": "Back to Dashboard",
+    "goBack": "Go Back"
+  }
+}

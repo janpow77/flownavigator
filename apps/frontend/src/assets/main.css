@@ -1,0 +1,93 @@
+/* Import Theme System - must be first */
+@import '../styles/themes.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn text-white;
+    background-color: var(--color-accent-600);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-accent-700);
+  }
+
+  .btn-primary:focus {
+    --tw-ring-color: var(--color-accent-500);
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .input {
+    @apply block w-full px-3 py-2 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent dark:bg-gray-800 dark:text-white;
+    border-color: var(--color-border);
+    --tw-ring-color: var(--color-accent-500);
+  }
+
+  .input:focus {
+    border-color: var(--color-accent-500);
+  }
+
+  .label {
+    @apply block text-sm font-medium mb-1;
+    color: var(--color-text-secondary);
+  }
+
+  .card {
+    @apply rounded-xl shadow-sm;
+    background-color: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+  }
+
+  .card-header {
+    @apply px-6 py-4;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  /* Accent Color Utilities */
+  .bg-accent-50 { background-color: var(--color-accent-50); }
+  .bg-accent-100 { background-color: var(--color-accent-100); }
+  .bg-accent-500 { background-color: var(--color-accent-500); }
+  .bg-accent-600 { background-color: var(--color-accent-600); }
+  .bg-accent-700 { background-color: var(--color-accent-700); }
+  .bg-accent-800 { background-color: var(--color-accent-800); }
+  .bg-accent-900 { background-color: var(--color-accent-900); }
+
+  .text-accent-400 { color: var(--color-accent-400); }
+  .text-accent-500 { color: var(--color-accent-500); }
+  .text-accent-600 { color: var(--color-accent-600); }
+  .text-accent-700 { color: var(--color-accent-700); }
+
+  .border-accent-500 { border-color: var(--color-accent-500); }
+  .border-accent-600 { border-color: var(--color-accent-600); }
+
+  .ring-accent-500 { --tw-ring-color: var(--color-accent-500); }
+}

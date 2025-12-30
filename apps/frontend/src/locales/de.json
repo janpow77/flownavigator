@@ -1,0 +1,151 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "loading": "Laden...",
+    "noData": "Keine Daten vorhanden",
+    "yes": "Ja",
+    "no": "Nein",
+    "back": "Zurück",
+    "next": "Weiter",
+    "submit": "Absenden",
+    "close": "Schließen",
+    "actions": "Aktionen",
+    "status": "Status",
+    "date": "Datum",
+    "error": "Fehler",
+    "success": "Erfolgreich",
+    "view": "Anzeigen"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "rememberMe": "Angemeldet bleiben",
+    "forgotPassword": "Passwort vergessen?",
+    "loginError": "Anmeldung fehlgeschlagen",
+    "invalidCredentials": "Ungültige E-Mail oder Passwort"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "groupQueries": "Konzern-Abfragen",
+    "auditCases": "Prüfungsfälle",
+    "systemAudits": "Systemprüfungen",
+    "reports": "Berichte",
+    "settings": "Einstellungen",
+    "help": "Hilfe"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen zurück, {name}!",
+    "overview": "Übersicht",
+    "recentActivity": "Letzte Aktivitäten",
+    "openTasks": "Offene Aufgaben",
+    "statistics": "Statistiken",
+    "quickActions": "Schnellaktionen"
+  },
+  "groupQueries": {
+    "title": "Konzern-Abfragen",
+    "description": "Verwalten Sie Ihre Konzern-Abfragen und verfolgen Sie den Antwort-Fortschritt.",
+    "newQuery": "Neue Abfrage",
+    "name": "Name",
+    "status": "Status",
+    "dueDate": "Fälligkeitsdatum",
+    "progress": "Fortschritt",
+    "allStatus": "Alle Status",
+    "statusOpen": "Offen",
+    "statusClosed": "Geschlossen",
+    "statusDraft": "Entwurf",
+    "category": {
+      "annual_report": "Jahresabfrage",
+      "quarterly_report": "Quartalsabfrage",
+      "ad_hoc": "Ad-hoc Abfrage",
+      "system_audit_summary": "Systemprüfungs-Zusammenfassung",
+      "statistics": "Statistische Erhebung"
+    },
+    "deadline": "Frist",
+    "responses": "Antworten"
+  },
+  "auditCases": {
+    "title": "Prüfungsfälle",
+    "description": "Übersicht aller Prüfungsfälle und deren Status.",
+    "newCase": "Neuer Prüfungsfall",
+    "caseId": "Fall-Nr.",
+    "project": "Vorhaben",
+    "type": "Typ",
+    "status": "Status",
+    "findings": "Feststellungen",
+    "totalCases": "Gesamt",
+    "totalFindings": "Feststellungen",
+    "allStatus": "Alle Status",
+    "allTypes": "Alle Typen",
+    "statusOpen": "Offen",
+    "statusInProgress": "In Bearbeitung",
+    "statusReview": "Prüfung",
+    "statusCompleted": "Abgeschlossen",
+    "typeSystem": "Systemprüfung",
+    "typeProject": "Vorhabenprüfung",
+    "operation": "Vorhaben",
+    "amount": "Betrag"
+  },
+  "documentBox": {
+    "title": "Belegkasten",
+    "upload": "Belege hochladen",
+    "verify": "Prüfen",
+    "verified": "Geprüft",
+    "rejected": "Abgelehnt",
+    "pending": "Ausstehend",
+    "aiVerification": "KI-Prüfung",
+    "runAiCheck": "KI-Prüfung starten"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Passen Sie Ihre persönlichen Einstellungen und Präferenzen an.",
+    "profile": "Profil",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "appearance": "Erscheinungsbild",
+    "darkMode": "Dunkelmodus",
+    "darkModeDescription": "Dunkles Farbschema für die Benutzeroberfläche verwenden.",
+    "language": "Sprache",
+    "languageDescription": "Wählen Sie Ihre bevorzugte Sprache.",
+    "theme": "Design",
+    "notifications": "Benachrichtigungen",
+    "emailNotifications": "E-Mail-Benachrichtigungen",
+    "emailNotificationsDescription": "Erhalten Sie E-Mail-Benachrichtigungen bei wichtigen Ereignissen.",
+    "systemNotifications": "System-Benachrichtigungen",
+    "systemNotificationsDescription": "Erhalten Sie Benachrichtigungen im Browser.",
+    "security": "Sicherheit",
+    "themes": {
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System"
+    }
+  },
+  "roles": {
+    "system_admin": "System-Administrator",
+    "group_admin": "Konzern-Administrator",
+    "authority_head": "Prüfbehördenleiter",
+    "team_leader": "Prüfteamleiter",
+    "auditor": "Prüfer",
+    "viewer": "Betrachter"
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "email": "Ungültige E-Mail-Adresse",
+    "minLength": "Mindestens {min} Zeichen erforderlich",
+    "maxLength": "Maximal {max} Zeichen erlaubt"
+  },
+  "errors": {
+    "pageNotFound": "Seite nicht gefunden",
+    "pageNotFoundDescription": "Die angeforderte Seite existiert nicht oder wurde verschoben.",
+    "backToDashboard": "Zum Dashboard",
+    "goBack": "Zurück"
+  }
+}

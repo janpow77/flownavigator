@@ -1,0 +1,42 @@
+{
+  "name": "@flowaudit/vue-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vue 3 Komponenten und Composables für FlowAudit",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./components/*": {
+      "import": "./dist/components/*.mjs",
+      "require": "./dist/components/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "vue-tsc --noEmit",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@flowaudit/common": "workspace:*",
+    "@flowaudit/checklists": "workspace:*",
+    "@flowaudit/group-queries": "workspace:*",
+    "@flowaudit/document-box": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vue": "^3.5.13",
+    "vue-tsc": "^2.2.0"
+  }
+}

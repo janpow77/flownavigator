@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "jsx": "preserve",
+    "jsxImportSource": "vue"
+  },
+  "include": ["src/**/*", "src/**/*.vue"],
+  "references": [
+    { "path": "../../core/common" },
+    { "path": "../../domain/checklists" },
+    { "path": "../../domain/group-queries" },
+    { "path": "../../documents/document-box" }
+  ]
+}

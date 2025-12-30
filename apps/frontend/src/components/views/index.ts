@@ -1,0 +1,5 @@
+export { default as TilesView } from './TilesView.vue'
+export { default as ListView } from './ListView.vue'
+export { default as TreeView } from './TreeView.vue'
+export { default as RadialView } from './RadialView.vue'
+export { default as MinimalView } from './MinimalView.vue'
