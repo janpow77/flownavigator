@@ -11,7 +11,6 @@ import {
   type FindingCreate,
   type FindingType,
   type FindingStatus,
-  type ErrorCategory,
   FINDING_TYPE_LABELS,
   FINDING_STATUS_LABELS,
   ERROR_CATEGORY_LABELS,

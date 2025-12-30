@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 
 import pytest
@@ -107,22 +108,31 @@ async def test_user(test_db: AsyncSession) -> dict:
     user_id = uuid.uuid4()
     tenant_id = uuid.uuid4()
 
+    now = datetime.now(timezone.utc)
+
     await test_db.execute(
         text(
             """
-            INSERT INTO tenants (id, name, type, status)
-            VALUES (:id, :name, :type, :status)
+            INSERT INTO tenants (id, name, type, status, created_at, updated_at)
+            VALUES (:id, :name, :type, :status, :created_at, :updated_at)
             ON CONFLICT (id) DO NOTHING
             """
         ),
-        {"id": tenant_id, "name": "Test Tenant", "type": "authority", "status": "active"},
+        {
+            "id": tenant_id,
+            "name": "Test Tenant",
+            "type": "authority",
+            "status": "active",
+            "created_at": now,
+            "updated_at": now,
+        },
     )
 
     await test_db.execute(
         text(
             """
-            INSERT INTO users (id, tenant_id, email, hashed_password, first_name, last_name, role, is_active)
-            VALUES (:id, :tenant_id, :email, :password, :first_name, :last_name, :role, true)
+            INSERT INTO users (id, tenant_id, email, hashed_password, first_name, last_name, role, is_active, created_at, updated_at)
+            VALUES (:id, :tenant_id, :email, :password, :first_name, :last_name, :role, true, :created_at, :updated_at)
             ON CONFLICT (email) DO NOTHING
             """
         ),
@@ -134,6 +144,8 @@ async def test_user(test_db: AsyncSession) -> dict:
             "first_name": "Test",
             "last_name": "User",
             "role": "system_admin",
+            "created_at": now,
+            "updated_at": now,
         },
     )
     await test_db.commit()
