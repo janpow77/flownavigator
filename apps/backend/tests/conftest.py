@@ -110,19 +110,19 @@ async def test_user(test_db: AsyncSession) -> dict:
     await test_db.execute(
         text(
             """
-            INSERT INTO tenants (id, name, is_active)
-            VALUES (:id, :name, true)
+            INSERT INTO tenants (id, name, type, status)
+            VALUES (:id, :name, :type, :status)
             ON CONFLICT (id) DO NOTHING
             """
         ),
-        {"id": tenant_id, "name": "Test Tenant"},
+        {"id": tenant_id, "name": "Test Tenant", "type": "authority", "status": "active"},
     )
 
     await test_db.execute(
         text(
             """
-            INSERT INTO users (id, tenant_id, email, hashed_password, role, is_active)
-            VALUES (:id, :tenant_id, :email, :password, :role, true)
+            INSERT INTO users (id, tenant_id, email, hashed_password, first_name, last_name, role, is_active)
+            VALUES (:id, :tenant_id, :email, :password, :first_name, :last_name, :role, true)
             ON CONFLICT (email) DO NOTHING
             """
         ),
@@ -131,6 +131,8 @@ async def test_user(test_db: AsyncSession) -> dict:
             "tenant_id": tenant_id,
             "email": "test@example.com",
             "password": "$2b$12$dummy_hashed_password_for_testing",
+            "first_name": "Test",
+            "last_name": "User",
             "role": "system_admin",
         },
     )
