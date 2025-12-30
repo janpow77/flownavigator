@@ -1,10 +1,15 @@
 """Application configuration."""
 
+import warnings
 from functools import lru_cache
 from typing import Any
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import PostgresDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Default insecure key - only for development
+_DEV_SECRET_KEY = "dev-secret-key-change-in-production"
 
 
 class Settings(BaseSettings):
@@ -25,9 +30,25 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
 
     # Security
-    secret_key: str = "dev-secret-key-change-in-production"
+    secret_key: str = _DEV_SECRET_KEY
     access_token_expire_minutes: int = 60 * 24  # 24 hours
     algorithm: str = "HS256"
+
+    @model_validator(mode="after")
+    def validate_secret_key(self) -> "Settings":
+        """Validate that secret key is set in production."""
+        if self.secret_key == _DEV_SECRET_KEY:
+            if not self.debug:
+                raise ValueError(
+                    "SECRET_KEY must be set to a secure value in production. "
+                    "Set DEBUG=true for development or provide a secure SECRET_KEY."
+                )
+            warnings.warn(
+                "Using default SECRET_KEY - DO NOT use in production!",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self
 
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
