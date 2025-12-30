@@ -18,6 +18,7 @@ from app.models.audit_case import (
     FiscalYear,
     ChecklistTemplate,
 )
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "TenantModel",
@@ -36,4 +37,5 @@ __all__ = [
     "AuditCaseFinding",
     "FiscalYear",
     "ChecklistTemplate",
+    "AuditLog",
 ]

@@ -3,7 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuditCase, updateAuditCase, type AuditCase } from '@/api/auditCases'
 import ChecklistPanel from '@/components/checklists/ChecklistPanel.vue'
+import FindingsPanel from '@/components/findings/FindingsPanel.vue'
 import DocumentBoxPanel from '@/components/documents/DocumentBoxPanel.vue'
+import HistoryPanel from '@/components/history/HistoryPanel.vue'
 
 const props = defineProps<{
   id: string
@@ -350,17 +352,8 @@ onMounted(() => {
       </div>
 
       <!-- Tab Content: Findings -->
-      <div v-else-if="activeTab === 'findings'" class="card p-8 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Keine Feststellungen</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">
-          Es wurden noch keine Feststellungen erfasst.
-        </p>
-        <button class="btn-primary mt-4">
-          Feststellung erfassen
-        </button>
+      <div v-else-if="activeTab === 'findings'" class="card overflow-hidden" style="min-height: 500px;">
+        <FindingsPanel :case-id="id" />
       </div>
 
       <!-- Tab Content: Documents -->
@@ -369,14 +362,8 @@ onMounted(() => {
       </div>
 
       <!-- Tab Content: History -->
-      <div v-else-if="activeTab === 'history'" class="card p-8 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Verlauf</h3>
-        <p class="mt-2 text-gray-500 dark:text-gray-400">
-          Die Änderungshistorie wird hier angezeigt.
-        </p>
+      <div v-else-if="activeTab === 'history'" class="card overflow-hidden" style="min-height: 500px;">
+        <HistoryPanel :case-id="id" />
       </div>
     </template>
   </div>

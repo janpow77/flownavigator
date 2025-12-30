@@ -6,12 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.api.audit_logs import log_audit_event
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.audit_case import AuditCase
@@ -176,6 +177,7 @@ async def list_documents(
 @router.post("", status_code=201)
 async def upload_document(
     case_id: str,
+    request: Request,
     file: UploadFile = File(...),
     category: DocumentCategory = Form(default="sonstige"),
     db: AsyncSession = Depends(get_db),
@@ -234,6 +236,22 @@ async def upload_document(
     )
 
     db.add(document)
+    await db.flush()
+
+    # Log the upload
+    file_size_kb = file_size / 1024
+    size_str = f"{file_size_kb:.1f} KB" if file_size_kb < 1024 else f"{file_size_kb/1024:.1f} MB"
+    await log_audit_event(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        entity_type="audit_case",
+        entity_id=case_id,
+        action="upload",
+        user=current_user,
+        description=f"Dokument hochgeladen: {filename} ({size_str})",
+        request=request,
+    )
+
     await db.commit()
     await db.refresh(document)
 
@@ -295,6 +313,7 @@ async def update_document(
     case_id: str,
     doc_id: str,
     data: BoxDocumentUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BoxDocumentResponse:
@@ -309,9 +328,11 @@ async def update_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     document = await get_document_or_404(doc_id, box, db)
+    filename = document.file_name
 
     # Update fields
     update_data = data.model_dump(exclude_unset=True)
+    old_status = document.manual_status
 
     # Handle manual verification status change
     if "manual_status" in update_data:
@@ -320,6 +341,29 @@ async def update_document(
 
     for key, value in update_data.items():
         setattr(document, key, value)
+
+    # Log verification status changes
+    if "manual_status" in update_data and old_status != update_data["manual_status"]:
+        status_labels = {
+            "pending": "Ausstehend",
+            "verified": "Verifiziert",
+            "rejected": "Abgelehnt",
+            "unclear": "Unklar",
+        }
+        new_status_label = status_labels.get(update_data["manual_status"], update_data["manual_status"])
+        await log_audit_event(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            entity_type="audit_case",
+            entity_id=case_id,
+            action="verify",
+            user=current_user,
+            field_name="manual_status",
+            old_value=old_status,
+            new_value=update_data["manual_status"],
+            description=f"Dokument '{filename}' als '{new_status_label}' markiert",
+            request=request,
+        )
 
     await db.commit()
     await db.refresh(document)
@@ -331,6 +375,7 @@ async def update_document(
 async def delete_document(
     case_id: str,
     doc_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -345,6 +390,19 @@ async def delete_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     document = await get_document_or_404(doc_id, box, db)
+    filename = document.file_name
+
+    # Log the deletion before actually deleting
+    await log_audit_event(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        entity_type="audit_case",
+        entity_id=case_id,
+        action="delete",
+        user=current_user,
+        description=f"Dokument gelöscht: {filename}",
+        request=request,
+    )
 
     # Delete file from disk
     storage_path = Path(document.storage_path)
