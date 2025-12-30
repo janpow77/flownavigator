@@ -4,64 +4,25 @@ import asyncio
 import os
 from datetime import datetime, timezone
 from typing import AsyncGenerator
+import uuid
 
-# Set TESTING environment variable to disable problematic middlewares
+# Set TESTING environment variable BEFORE importing app modules
 os.environ["TESTING"] = "true"
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
+
+# Import app's database components - use app's engine and session factory
+# This ensures tests use the same database connection as the app
+from app.core.database import (
+    async_session_factory,
+    engine,
+    Base,
 )
-
-from app.core.config import settings
 from app.core.security import create_access_token
-from app.models.base import Base
-
-
-# Flag to determine test mode
-# If TEST_AGAINST_CONTAINER is set, tests will connect to running backend
-# Otherwise, tests use ASGITransport directly against the app
-TEST_AGAINST_CONTAINER = os.getenv("TEST_AGAINST_CONTAINER", "").lower() == "true"
-TEST_BASE_URL = os.getenv("TEST_BASE_URL", "http://localhost:8000")
-
-# Shared engine and session factory - created once per test session
-_test_engine: AsyncEngine | None = None
-_test_session_factory: async_sessionmaker | None = None
-
-
-def get_or_create_engine() -> AsyncEngine:
-    """Get or create test engine."""
-    global _test_engine
-    if _test_engine is None:
-        _test_engine = create_async_engine(
-            str(settings.database_url),
-            echo=False,
-            future=True,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-        )
-    return _test_engine
-
-
-def get_or_create_session_factory() -> async_sessionmaker:
-    """Get or create session factory."""
-    global _test_session_factory
-    if _test_session_factory is None:
-        _test_session_factory = async_sessionmaker(
-            get_or_create_engine(),
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-    return _test_session_factory
+from app.main import app
 
 
 @pytest.fixture(scope="session")
@@ -72,8 +33,7 @@ def event_loop_policy():
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def setup_database():
-    """Create database tables for testing."""
-    engine = get_or_create_engine()
+    """Create database tables using app's engine."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -81,19 +41,20 @@ async def setup_database():
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def test_db(setup_database) -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for tests."""
-    factory = get_or_create_session_factory()
-    async with factory() as session:
+async def test_db(setup_database) -> AsyncGenerator:
+    """Get database session using app's session factory."""
+    async with async_session_factory() as session:
         yield session
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def test_user(test_db: AsyncSession) -> dict:
+async def test_user(test_db) -> dict:
     """Create or get a test user."""
     # Try to get existing user
     result = await test_db.execute(
-        text("SELECT id, tenant_id, email, role FROM users LIMIT 1")
+        text(
+            "SELECT id, tenant_id, email, role FROM users WHERE email = 'test@example.com'"
+        )
     )
     row = result.fetchone()
 
@@ -106,11 +67,8 @@ async def test_user(test_db: AsyncSession) -> dict:
         }
 
     # Create a test user if none exists
-    import uuid
-
     user_id = uuid.uuid4()
     tenant_id = uuid.uuid4()
-
     now = datetime.now(timezone.utc)
 
     await test_db.execute(
@@ -176,36 +134,18 @@ async def auth_headers(test_user: dict) -> dict:
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def client(setup_database) -> AsyncGenerator[AsyncClient, None]:
-    """Create test client."""
-    if TEST_AGAINST_CONTAINER:
-        # Connect to running backend container
-        async_client = AsyncClient(
-            base_url=TEST_BASE_URL,
-            timeout=30.0,
-            http2=False,
-        )
-    else:
-        # Use ASGITransport for direct app testing
-        from app.main import app
-
-        transport = ASGITransport(app=app)
-        async_client = AsyncClient(
-            transport=transport,
-            base_url="http://test",
-            timeout=30.0,
-        )
-
-    try:
+    """Create test client using ASGITransport with app."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        timeout=30.0,
+    ) as async_client:
         yield async_client
-    finally:
-        try:
-            await asyncio.wait_for(async_client.aclose(), timeout=1.0)
-        except Exception:
-            pass
 
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def cleanup_test_cases(test_db: AsyncSession):
+async def cleanup_test_cases(test_db):
     """Cleanup test cases after tests."""
     yield
     try:
