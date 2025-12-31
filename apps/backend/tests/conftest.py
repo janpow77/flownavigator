@@ -1,6 +1,5 @@
 """Test configuration and fixtures."""
 
-import asyncio
 import os
 from datetime import datetime, timezone
 from typing import AsyncGenerator
@@ -24,103 +23,65 @@ from app.core.security import create_access_token
 import app.models  # noqa: F401
 
 
-# Module-level engine for tests (recreated per test session)
-_test_engine = None
-_test_session_factory = None
+# Cached test user data
+_test_user_cache = None
 
 
-def get_test_engine():
-    """Get or create test engine."""
-    global _test_engine
-    if _test_engine is None:
-        _test_engine = create_async_engine(
-            str(settings.database_url),
-            echo=False,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-        )
-    return _test_engine
-
-
-def get_test_session_factory():
-    """Get or create test session factory."""
-    global _test_session_factory
-    if _test_session_factory is None:
-        _test_session_factory = async_sessionmaker(
-            get_test_engine(),
-            class_=AsyncSession,
-            expire_on_commit=False,
-            autocommit=False,
-            autoflush=False,
-        )
-    return _test_session_factory
-
-
-async def reset_test_engine():
-    """Reset test engine."""
-    global _test_engine, _test_session_factory
-    if _test_engine is not None:
-        await _test_engine.dispose()
-    _test_engine = None
-    _test_session_factory = None
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the event loop for the test session."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="session")
-async def setup_database(event_loop):
-    """Reset and create database tables."""
-    # Reset any existing engine
-    await reset_test_engine()
+@pytest_asyncio.fixture
+async def db_engine():
+    """Create a fresh engine for each test."""
+    engine = create_async_engine(
+        str(settings.database_url),
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
 
     # Create tables
-    engine = get_test_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    yield
+    yield engine
 
     # Cleanup
-    await reset_test_engine()
+    await engine.dispose()
 
 
-@pytest_asyncio.fixture(scope="function")
-async def test_db(setup_database) -> AsyncGenerator[AsyncSession, None]:
+@pytest_asyncio.fixture
+async def test_db(db_engine) -> AsyncGenerator[AsyncSession, None]:
     """Get database session for each test."""
-    factory = get_test_session_factory()
+    factory = async_sessionmaker(
+        db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
     async with factory() as session:
         yield session
         # Rollback any uncommitted changes
         await session.rollback()
 
 
-# Cached test user data (created once, reused)
-_test_user_cache = None
-
-
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def test_user(test_db) -> dict:
     """Create or get a test user."""
     global _test_user_cache
 
+    # Try to get existing user from cache and verify
     if _test_user_cache is not None:
-        # Verify user still exists
-        result = await test_db.execute(
-            text("SELECT id FROM users WHERE id = :id"),
-            {"id": uuid.UUID(_test_user_cache["id"])},
-        )
-        if result.fetchone():
-            return _test_user_cache
+        try:
+            result = await test_db.execute(
+                text("SELECT id FROM users WHERE id = :id"),
+                {"id": uuid.UUID(_test_user_cache["id"])},
+            )
+            if result.fetchone():
+                return _test_user_cache
+        except Exception:
+            pass
 
-    # Try to get existing user
+    # Try to get existing user from database
     result = await test_db.execute(
         text(
             "SELECT id, tenant_id, email, role FROM users "
@@ -200,7 +161,7 @@ async def test_user(test_db) -> dict:
     return _test_user_cache
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def auth_headers(test_user: dict) -> dict:
     """Auth headers with bearer token."""
     token = create_access_token(
@@ -213,8 +174,8 @@ async def auth_headers(test_user: dict) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-@pytest_asyncio.fixture(scope="function")
-async def client(setup_database) -> AsyncGenerator[AsyncClient, None]:
+@pytest_asyncio.fixture
+async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
     """Create test client using ASGITransport with app."""
     from app.main import app
 
@@ -227,7 +188,7 @@ async def client(setup_database) -> AsyncGenerator[AsyncClient, None]:
         yield async_client
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def cleanup_test_cases(test_db):
     """Cleanup test cases after tests."""
     yield
