@@ -24,7 +24,7 @@ from app.services.github_service import GitHubService, Repository, Branch
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestLLMConfiguration:
     """Tests for LLM configuration endpoints."""
 
@@ -197,7 +197,7 @@ class TestLLMConfiguration:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestModuleTemplate:
     """Tests for module template endpoints."""
 
@@ -304,7 +304,7 @@ class TestModuleTemplate:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestGitHubIntegration:
     """Tests for GitHub integration endpoints."""
 
@@ -362,7 +362,7 @@ class TestGitHubIntegration:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestModuleConversion:
     """Tests for module conversion endpoints."""
 
@@ -504,7 +504,7 @@ class TestModuleConversion:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestLLMServiceUnit:
     """Unit tests for the LLM service."""
 
@@ -536,7 +536,7 @@ class TestLLMServiceUnit:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestGitHubServiceUnit:
     """Unit tests for the GitHub service."""
 
@@ -607,7 +607,7 @@ class TestGitHubServiceUnit:
 # =============================================================================
 
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 class TestModels:
     """Tests for module converter models."""
 
