@@ -188,7 +188,7 @@ onUnmounted(() => {
 <template>
   <div
     ref="containerRef"
-    class="flex items-center justify-center min-h-[800px] relative overflow-hidden"
+    class="flex items-center justify-center min-h-[800px] relative"
     @wheel.prevent="handleWheel"
   >
     <!-- Controls Bar -->
@@ -498,15 +498,6 @@ onUnmounted(() => {
       </Transition>
     </div>
 
-    <!-- Locked Module Info -->
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 text-[13px] border border-dashed border-gray-300 dark:border-gray-600">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        FlowInvoice (gesperrt)
-      </div>
-    </div>
   </div>
 </template>
 

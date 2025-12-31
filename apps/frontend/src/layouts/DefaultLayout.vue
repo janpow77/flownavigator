@@ -17,7 +17,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 lg:flex">
     <!-- Mobile sidebar overlay -->
     <div
       v-if="sidebarOpen"
@@ -32,14 +32,14 @@ async function handleLogout() {
     />
 
     <!-- Main content -->
-    <div class="lg:pl-64">
+    <div class="flex-1 min-h-0 overflow-visible">
       <TheHeader
         @toggle-sidebar="sidebarOpen = !sidebarOpen"
         @logout="handleLogout"
       />
 
-      <main class="py-6">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <main>
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-0 pb-6">
           <RouterView />
         </div>
       </main>
