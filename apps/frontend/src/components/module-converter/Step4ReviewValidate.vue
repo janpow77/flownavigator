@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useModuleConverterStore } from '@/stores/moduleConverter'
 
 const store = useModuleConverterStore()
@@ -33,6 +33,17 @@ function formatFileSize(content: string): string {
 
 function getLineCount(content: string): number {
   return content.split('\n').length
+}
+
+function handleFileUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      sourceContent.value = reader.result as string
+    }
+    reader.readAsText(file)
+  }
 }
 </script>
 
@@ -149,16 +160,7 @@ function getLineCount(content: string): number {
             type="file"
             accept=".txt,.json,.xml,.yaml,.yml,.md"
             class="hidden"
-            @change="(e: Event) => {
-              const file = (e.target as HTMLInputElement).files?.[0]
-              if (file) {
-                const reader = new FileReader()
-                reader.onload = () => {
-                  sourceContent = reader.result as string
-                }
-                reader.readAsText(file)
-              }
-            }"
+            @change="handleFileUpload"
           />
         </label>
 

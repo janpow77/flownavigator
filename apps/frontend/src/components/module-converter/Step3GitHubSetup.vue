@@ -73,11 +73,6 @@ function handleBack() {
 function handleNext() {
   store.nextStep()
 }
-
-function handleSkip() {
-  store.selectGitHubIntegration(null)
-  store.nextStep()
-}
 </script>
 
 <template>
