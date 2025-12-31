@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 # Import database config and models
 from app.core.config import settings
-from app.core.database import Base
+from app.core.database import Base, get_db
 from app.core.security import create_access_token
 
 # Import all models to register them with Base.metadata
@@ -49,16 +49,21 @@ async def db_engine():
 
 
 @pytest_asyncio.fixture
-async def test_db(db_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for each test."""
-    factory = async_sessionmaker(
+async def db_session_factory(db_engine):
+    """Create session factory for tests."""
+    return async_sessionmaker(
         db_engine,
         class_=AsyncSession,
         expire_on_commit=False,
         autocommit=False,
         autoflush=False,
     )
-    async with factory() as session:
+
+
+@pytest_asyncio.fixture
+async def test_db(db_session_factory) -> AsyncGenerator[AsyncSession, None]:
+    """Get database session for each test."""
+    async with db_session_factory() as session:
         yield session
         # Rollback any uncommitted changes
         await session.rollback()
@@ -175,9 +180,23 @@ async def auth_headers(test_user: dict) -> dict:
 
 
 @pytest_asyncio.fixture
-async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
-    """Create test client using ASGITransport with app."""
+async def client(db_session_factory) -> AsyncGenerator[AsyncClient, None]:
+    """Create test client with overridden database dependency."""
     from app.main import app
+
+    # Override the get_db dependency to use the test session
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with db_session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
+
+    app.dependency_overrides[get_db] = override_get_db
 
     transport = ASGITransport(app=app)
     async with AsyncClient(
@@ -186,6 +205,9 @@ async def client(db_engine) -> AsyncGenerator[AsyncClient, None]:
         timeout=30.0,
     ) as async_client:
         yield async_client
+
+    # Clear the override after test
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
