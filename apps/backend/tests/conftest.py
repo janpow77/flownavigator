@@ -14,15 +14,14 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
-# Import app's database components - use app's engine and session factory
-# This ensures tests use the same database connection as the app
+# Import database functions - use lazy-loaded getters
 from app.core.database import (
-    async_session_factory,
-    engine,
+    get_engine,
+    get_session_factory,
+    reset_engine,
     Base,
 )
 from app.core.security import create_access_token
-from app.main import app
 
 
 @pytest.fixture(scope="session")
@@ -33,17 +32,31 @@ def event_loop_policy():
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
 async def setup_database():
-    """Create database tables using app's engine."""
+    """Reset and create database tables.
+
+    Resetting the engine ensures it's created within the pytest-asyncio
+    event loop, avoiding 'Event loop is closed' errors.
+    """
+    # Reset any existing engine to ensure fresh creation in this event loop
+    reset_engine()
+
+    # Now get engine and create tables
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
     yield
-    # Don't drop tables - let CI handle cleanup
+
+    # Cleanup: dispose engine properly
+    await engine.dispose()
+    reset_engine()
 
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def test_db(setup_database) -> AsyncGenerator:
-    """Get database session using app's session factory."""
-    async with async_session_factory() as session:
+    """Get database session using lazy session factory."""
+    factory = get_session_factory()
+    async with factory() as session:
         yield session
 
 
@@ -135,6 +148,9 @@ async def auth_headers(test_user: dict) -> dict:
 @pytest_asyncio.fixture(loop_scope="session")
 async def client(setup_database) -> AsyncGenerator[AsyncClient, None]:
     """Create test client using ASGITransport with app."""
+    # Import app here to ensure database is set up first
+    from app.main import app
+
     transport = ASGITransport(app=app)
     async with AsyncClient(
         transport=transport,

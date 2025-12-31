@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.api import router as api_router
 from app.core.config import settings
-from app.core.database import close_db, init_db, async_session_factory
+from app.core.database import close_db, init_db, get_session_factory
 from app.core.logging import setup_logging, get_logger, LoggingMiddleware
 from app.core.rate_limit import setup_rate_limiting
 
@@ -73,7 +73,7 @@ async def health_check() -> dict[str, str]:
 async def api_health_check() -> dict[str, str]:
     """Extended health check with database connectivity."""
     try:
-        async with async_session_factory() as session:
+        async with get_session_factory()() as session:
             await session.execute(text("SELECT 1"))
         db_status = "healthy"
     except Exception as e:

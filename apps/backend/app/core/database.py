@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -35,29 +36,53 @@ class Base(DeclarativeBase):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-# Create async engine
-engine = create_async_engine(
-    str(settings.database_url),
-    echo=settings.debug,
-    future=True,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+# Lazy engine initialization to avoid event loop issues in tests
+_engine: AsyncEngine | None = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
 
-# Session factory
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+
+def get_engine() -> AsyncEngine:
+    """Get or create the async engine.
+
+    Lazy initialization ensures the engine is created within the correct
+    event loop context, which is crucial for pytest-asyncio compatibility.
+    """
+    global _engine
+    if _engine is None:
+        _engine = create_async_engine(
+            str(settings.database_url),
+            echo=settings.debug,
+            future=True,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+        )
+    return _engine
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Get or create the session factory."""
+    global _async_session_factory
+    if _async_session_factory is None:
+        _async_session_factory = async_sessionmaker(
+            get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+    return _async_session_factory
+
+
+# Backwards compatible aliases - use functions directly
+# Note: Code that imports `engine` or `async_session_factory` should be updated
+# to use get_engine() and get_session_factory() instead
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for getting database session."""
-    async with async_session_factory() as session:
+    factory = get_session_factory()
+    async with factory() as session:
         try:
             yield session
             await session.commit()
@@ -70,10 +95,28 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Initialize database tables."""
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db() -> None:
     """Close database connection."""
-    await engine.dispose()
+    global _engine, _async_session_factory
+    if _engine is not None:
+        await _engine.dispose()
+        _engine = None
+        _async_session_factory = None
+
+
+def reset_engine() -> None:
+    """Reset engine for testing purposes.
+
+    This allows tests to create a fresh engine in their event loop.
+    """
+    global _engine, _async_session_factory
+    if _engine is not None:
+        # Note: Can't await dispose here, must be done async
+        pass
+    _engine = None
+    _async_session_factory = None

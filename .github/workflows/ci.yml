@@ -52,12 +52,7 @@ jobs:
           SECRET_KEY: test-secret-key-for-ci-minimum-32-chars
           DEBUG: "true"
           TESTING: "true"
-        run: |
-          # Note: Some tests fail due to pytest-asyncio event loop issues with SQLAlchemy asyncpg
-          # 12/17 tests pass consistently
-          # TODO: Fix by using function-scoped fixtures or custom event loop management
-          pytest tests/ -v --tb=short || echo "Some tests failed - see output above"
-        continue-on-error: true
+        run: pytest tests/ -v --tb=short
 
   # Backend Code Quality
   backend-quality:
