@@ -41,6 +41,11 @@ const router = createRouter({
           name: 'settings',
           component: () => import('@/views/SettingsView.vue'),
         },
+        {
+          path: 'module-converter',
+          name: 'module-converter',
+          component: () => import('@/views/ModuleConverterView.vue'),
+        },
       ],
     },
     {

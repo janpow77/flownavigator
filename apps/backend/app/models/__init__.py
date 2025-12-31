@@ -19,6 +19,16 @@ from app.models.audit_case import (
     ChecklistTemplate,
 )
 from app.models.audit_log import AuditLog
+from app.models.module_converter import (
+    LLMProvider,
+    ConversionStatus,
+    ModuleType,
+    LLMConfiguration,
+    ModuleTemplate,
+    ModuleConversionLog,
+    GitHubIntegration,
+    ConversionStep,
+)
 
 __all__ = [
     "TenantModel",
@@ -38,4 +48,13 @@ __all__ = [
     "FiscalYear",
     "ChecklistTemplate",
     "AuditLog",
+    # Module Converter
+    "LLMProvider",
+    "ConversionStatus",
+    "ModuleType",
+    "LLMConfiguration",
+    "ModuleTemplate",
+    "ModuleConversionLog",
+    "GitHubIntegration",
+    "ConversionStep",
 ]

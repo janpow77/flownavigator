@@ -38,3 +38,6 @@ export interface PaginatedResponse<T> {
 
 // Re-export preferences types
 export * from './preferences'
+
+// Re-export module converter types
+export * from './moduleConverter'
