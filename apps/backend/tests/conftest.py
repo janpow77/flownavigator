@@ -23,6 +23,9 @@ from app.core.database import (
 )
 from app.core.security import create_access_token
 
+# Import all models to register them with Base.metadata
+import app.models  # noqa: F401
+
 
 @pytest.fixture(scope="session")
 def event_loop_policy():
