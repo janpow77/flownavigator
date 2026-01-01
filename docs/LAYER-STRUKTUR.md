@@ -1,5 +1,498 @@
 # FlowNavigator Layer-Struktur und Rollen
 
+---
+
+## Layer 0: Vendor (Softwarefirma)
+
+Die oberste Ebene ist der **Vendor** (Softwarefirma), der das gesamte System betreibt und alle Kunden (Coordination Bodies) verwaltet.
+
+### Vendor-Hierarchie
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        LAYER 0: VENDOR                                  │
+│                     (Softwarefirma/Betreiber)                           │
+│                                                                         │
+│  Rollen: vendor_admin, vendor_support                                   │
+│                                                                         │
+│  Verwaltung:                                                            │
+│  • Kunden (Coordination Bodies)                                         │
+│  • Lizenzen & Abrechnung                                                │
+│  • Globale Templates                                                    │
+│  • System-Konfiguration                                                 │
+│  • Support-Zugang                                                       │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+│   KUNDE A     │       │   KUNDE B     │       │   KUNDE C     │
+│ (Coord. Body) │       │ (Coord. Body) │       │ (Coord. Body) │
+│               │       │               │       │               │
+│ 50 Lizenzen   │       │ 200 Lizenzen  │       │ 25 Lizenzen   │
+│ 43 aktiv      │       │ 187 aktiv     │       │ 22 aktiv      │
+└───────────────┘       └───────────────┘       └───────────────┘
+```
+
+### Vendor-Rollen (NEU)
+
+| Rolle | Beschreibung | Befugnisse |
+|-------|--------------|------------|
+| `vendor_admin` | Vendor-Administrator | Alle Kunden, Lizenzen, globale Einstellungen |
+| `vendor_support` | Support-Mitarbeiter | Lesezugriff auf Kundendaten für Support |
+
+### Vendor-Datenmodell
+
+```python
+class Vendor(Base):
+    """Softwarefirma/Betreiber des Systems."""
+    id: UUID
+    name: str                          # "FlowAudit GmbH"
+    contact_email: str                 # "support@flowaudit.de"
+    billing_email: str                 # "billing@flowaudit.de"
+    address: Address                   # Firmenadresse
+
+class VendorUser(Base):
+    """Mitarbeiter der Softwarefirma."""
+    id: UUID
+    vendor_id: UUID
+    email: str
+    role: "vendor_admin" | "vendor_support"
+
+class Customer(Base):
+    """Kunde = Coordination Body mit Lizenzvertrag."""
+    id: UUID
+    tenant_id: UUID                    # Verknüpfung zum Tenant
+
+    # Vertragsdaten
+    contract_number: str               # "2024-CB-001"
+    contract_start: date
+    contract_end: date | None
+
+    # Lizenzen
+    licensed_users: int                # Gekaufte Lizenzen
+    licensed_authorities: int          # Max. Prüfbehörden
+
+    # Abrechnung
+    billing_contact: str
+    billing_address: Address
+    payment_method: str
+
+    # Status
+    status: "active" | "suspended" | "trial" | "terminated"
+```
+
+### Lizenz-Dashboard (Vendor-Sicht)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  KUNDEN-ÜBERSICHT                                          [+ Neuer Kunde]
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Kunde: EU-Prüfungskoordination                    Status: ✅ Aktiv │
+│  │ Vertrag: 2024-CB-001 (01.01.2024 - 31.12.2026)                   │
+│  │                                                                   │
+│  │ Lizenzen:  50 gekauft │ 43 aktiv │ 7 verfügbar │ ⚠️ 86% genutzt  │
+│  │ Behörden:   5 erlaubt │  3 aktiv │ 2 verfügbar                   │
+│  │                                                                   │
+│  │ [Bearbeiten] [Lizenzen erweitern] [Support-Zugang] [Deaktivieren]│
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Kunde: Bundesländer-Verbund                       Status: ✅ Aktiv │
+│  │ Vertrag: 2023-CB-002 (01.07.2023 - 30.06.2025)                   │
+│  │                                                                   │
+│  │ Lizenzen: 200 gekauft │ 187 aktiv │ 13 verfügbar │ 94% genutzt   │
+│  │ Behörden:  16 erlaubt │  14 aktiv │  2 verfügbar                 │
+│  │                                                                   │
+│  │ [Bearbeiten] [Lizenzen erweitern] [Support-Zugang] [Deaktivieren]│
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Administrations-Konzept (alle Layer)
+
+### Übersicht: Was wird auf welchem Layer administriert?
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ LAYER 0: VENDOR (Softwarefirma)                                         │
+│ ────────────────────────────────────────────────────────────────────────│
+│ • Kunden anlegen/verwalten (Coordination Bodies)                        │
+│ • Lizenzverträge & Kontingente                                          │
+│ • Globale Templates (Basis-Checklisten, Standard-Workflows)             │
+│ • Systemweite Konfiguration                                             │
+│ • Support-Zugänge                                                       │
+│ • Abrechnungsdaten                                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ LAYER 1: COORDINATION BODY (Konzern)                                    │
+│ ────────────────────────────────────────────────────────────────────────│
+│ • Prüfbehörden anlegen/verwalten                                        │
+│ • Benutzer im Konzern verwalten                                         │
+│ • Konzern-Templates (überschreiben globale Templates)                   │
+│ • Konzern-Stammdaten (Name, Adresse, Logo)                              │
+│ • Lizenzkontingent auf Behörden verteilen                               │
+│ • Konzern-weite Einstellungen                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ LAYER 2: PRÜFBEHÖRDE (Authority)                                        │
+│ ────────────────────────────────────────────────────────────────────────│
+│ • Benutzer in der Behörde verwalten                                     │
+│ • Behörden-Templates (überschreiben Konzern-Templates)                  │
+│ • Behörden-Stammdaten (Name, Adresse, Logo)                             │
+│ • Prüfteams konfigurieren                                               │
+│ • Behörden-spezifische Einstellungen                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Template-Hierarchie (Vererbung)
+
+Templates werden hierarchisch vererbt und können auf jeder Ebene überschrieben werden:
+
+```
+VENDOR (Globale Templates)
+    │
+    │  Basis-Checklisten, Standard-Workflows, Default-Einstellungen
+    │
+    ▼
+COORDINATION BODY (Konzern-Templates)
+    │
+    │  Erbt von Vendor, kann anpassen/erweitern
+    │  z.B. EU-spezifische Prüfkriterien
+    │
+    ▼
+PRÜFBEHÖRDE (Behörden-Templates)
+    │
+    │  Erbt von Konzern, kann anpassen/erweitern
+    │  z.B. Landesspezifische Anforderungen
+    │
+    ▼
+PRÜFFALL (Instanz)
+
+    Verwendet das effektive Template der Behörde
+```
+
+### Template-Typen
+
+| Template-Typ | Beschreibung | Beispiel |
+|--------------|--------------|----------|
+| **Checklisten** | Prüfschritte und Kriterien | "EU-Fördermittel Vor-Ort-Prüfung" |
+| **Workflows** | Ablauf von Prüfungen | "Standard-Prüfungsprozess 4-Augen" |
+| **Dokument-Vorlagen** | Brief- und Berichtvorlagen | "Prüfbericht-Vorlage.docx" |
+| **Findings-Kategorien** | Kategorisierung von Feststellungen | "Finanziell", "Verfahren", "Compliance" |
+| **Berechnungsregeln** | Fehlerquoten, Stichproben | "Stichprobenberechnung nach EU-VO" |
+
+### Template-Datenmodell
+
+```python
+class Template(Base):
+    id: UUID
+    type: "checklist" | "workflow" | "document" | "finding_category" | "calculation"
+    name: str
+    version: str                       # "1.0.0"
+
+    # Hierarchie
+    scope: "vendor" | "group" | "authority"
+    owner_id: UUID                     # Vendor, Tenant (group), oder Tenant (authority)
+    parent_template_id: UUID | None    # Überschreibt dieses Template
+
+    # Inhalt
+    content: dict                      # JSONB - Template-spezifische Daten
+
+    # Status
+    status: "draft" | "active" | "deprecated"
+    is_default: bool                   # Standard-Template für neue Entities
+```
+
+---
+
+## Stammdaten-Verwaltung
+
+### Auf Layer 0 (Vendor)
+
+```python
+class VendorSettings(Base):
+    """Globale System-Einstellungen."""
+    id: UUID
+
+    # Branding
+    system_name: str                   # "FlowAudit"
+    logo_url: str
+    primary_color: str                 # "#1E40AF"
+
+    # Defaults
+    default_language: str              # "de"
+    default_timezone: str              # "Europe/Berlin"
+
+    # Features
+    enabled_modules: list[str]         # ["checklists", "findings", "documents"]
+    max_file_upload_size_mb: int       # 50
+```
+
+### Auf Layer 1 (Coordination Body)
+
+```python
+class CoordinationBodyProfile(Base):
+    """Stammdaten eines Coordination Body."""
+    tenant_id: UUID                    # FK zu Tenant
+
+    # Grunddaten
+    official_name: str                 # "Europäische Prüfungskoordination"
+    short_name: str                    # "EU-PK"
+    legal_form: str                    # "Körperschaft des öffentlichen Rechts"
+
+    # Adresse
+    street: str
+    postal_code: str
+    city: str
+    country: str
+
+    # Kontakt
+    phone: str
+    email: str
+    website: str
+
+    # Branding
+    logo_url: str
+    primary_color: str
+    secondary_color: str
+
+    # Rechnungsadresse (falls abweichend)
+    billing_address: Address | None
+    billing_contact: str
+```
+
+### Auf Layer 2 (Prüfbehörde)
+
+```python
+class AuthorityProfile(Base):
+    """Stammdaten einer Prüfbehörde."""
+    tenant_id: UUID                    # FK zu Tenant
+
+    # Grunddaten
+    official_name: str                 # "Bundesrechnungshof"
+    short_name: str                    # "BRH"
+    authority_type: str                # "Oberste Bundesbehörde"
+
+    # Adresse
+    street: str
+    postal_code: str
+    city: str
+    state: str                         # Bundesland
+    country: str
+
+    # Kontakt
+    phone: str
+    fax: str
+    email: str
+    website: str
+
+    # Leitung
+    head_title: str                    # "Präsident"
+    head_name: str                     # "Dr. Max Mustermann"
+
+    # Branding (überschreibt Konzern)
+    logo_url: str | None
+    use_parent_branding: bool          # True = Konzern-Branding verwenden
+```
+
+---
+
+## Benutzer-Administration
+
+### Benutzer-Verwaltung pro Layer
+
+| Layer | Wer verwaltet? | Was kann verwaltet werden? |
+|-------|----------------|---------------------------|
+| **Vendor** | `vendor_admin` | Vendor-Mitarbeiter, Support-Zugänge |
+| **Coord. Body** | `group_admin` | Alle Benutzer im Konzern + Behörden |
+| **Prüfbehörde** | `authority_head` | Nur Benutzer in der eigenen Behörde |
+
+### Benutzer-Datenmodell (erweitert)
+
+```python
+class User(Base):
+    id: UUID
+    tenant_id: UUID
+
+    # Persönliche Daten
+    email: str
+    first_name: str
+    last_name: str
+    title: str | None                  # "Dr.", "Prof."
+
+    # Rolle
+    role: UserRole
+
+    # Kontakt
+    phone: str | None
+    mobile: str | None
+    office_location: str | None        # "Raum 4.12"
+
+    # Signatur (für Berichte)
+    signature_title: str | None        # "Oberamtsrat"
+    signature_department: str | None   # "Abteilung III/2"
+
+    # Status
+    is_active: bool
+    last_login_at: datetime | None
+    password_changed_at: datetime | None
+    must_change_password: bool
+```
+
+### Lizenz-Tracking
+
+```python
+class LicenseUsage(Base):
+    """Tracking der Lizenznutzung."""
+    customer_id: UUID                  # FK zu Customer
+
+    # Aktueller Stand
+    active_users: int                  # Aktive Benutzer (is_active=True)
+    licensed_users: int                # Gekaufte Lizenzen
+
+    # Historie
+    date: date
+    peak_users: int                    # Maximum an diesem Tag
+
+class LicenseAlert(Base):
+    """Warnungen bei Lizenzüberschreitung."""
+    customer_id: UUID
+    alert_type: "warning_80" | "warning_90" | "exceeded"
+    triggered_at: datetime
+    acknowledged_at: datetime | None
+    acknowledged_by: UUID | None       # Vendor-User
+```
+
+---
+
+## Administrations-UI pro Layer
+
+### Layer 0: Vendor-Admin-Portal
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  VENDOR ADMIN PORTAL                                    [Admin: J.Schmidt]
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
+│  │ Kunden   │ │ Lizenzen │ │Templates │ │ Support  │ │ System   │      │
+│  │    12    │ │  475/500 │ │    24    │ │  3 offen │ │ Settings │      │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
+│                                                                         │
+│  SCHNELLZUGRIFF                                                         │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  [+ Neuer Kunde]  [+ Globales Template]  [Lizenz-Report]  [Audit-Log]  │
+│                                                                         │
+│  KUNDEN MIT LIZENZWARNUNG                                               │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  ⚠️ Bundesländer-Verbund: 94% Lizenzauslastung (187/200)               │
+│  ⚠️ Bayern-Prüfung e.V.: 88% Lizenzauslastung (44/50)                  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1: Coordination Body Admin
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  EU-PRÜFUNGSKOORDINATION - ADMINISTRATION              [Admin: M.Müller]
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │ Prüfbehörden │ │   Benutzer   │ │  Templates   │ │ Stammdaten   │   │
+│  │      3       │ │    43/50     │ │     12       │ │  [Bearbeiten]│   │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+│                                                                         │
+│  PRÜFBEHÖRDEN                                                           │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Bundesrechnungshof                              15 Benutzer     │   │
+│  │ Adresse: Adenauerallee 81, 53113 Bonn          [Bearbeiten]     │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Landesrechnungshof Bayern                       12 Benutzer     │   │
+│  │ Adresse: Arcisstraße 1, 80333 München          [Bearbeiten]     │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  [+ Neue Prüfbehörde]                                                   │
+│                                                                         │
+│  BENUTZER IM KONZERN                                                    │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  │ Name              │ Rolle          │ Behörde        │ Status │      │
+│  │───────────────────│────────────────│────────────────│────────│      │
+│  │ Max Müller        │ group_admin    │ Koordination   │ ✅     │      │
+│  │ Anna Schmidt      │ authority_head │ Koordination   │ ✅     │      │
+│  │ Sabine Meier      │ authority_head │ BRH            │ ✅     │      │
+│  │ Klaus Fischer     │ team_leader    │ BRH            │ ✅     │      │
+│  │ ...               │                │                │        │      │
+│                                                                         │
+│  [+ Neuer Benutzer]  [Benutzer importieren]  [Inaktive anzeigen]       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 2: Prüfbehörden-Admin
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  BUNDESRECHNUNGSHOF - ADMINISTRATION                  [Admin: S.Meier] │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │   Benutzer   │ │  Templates   │ │ Stammdaten   │ │    Teams     │   │
+│  │     15       │ │      5       │ │ [Bearbeiten] │ │      3       │   │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+│                                                                         │
+│  STAMMDATEN                                                             │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  Name:      Bundesrechnungshof                                          │
+│  Kurzname:  BRH                                                         │
+│  Adresse:   Adenauerallee 81, 53113 Bonn                               │
+│  Telefon:   +49 228 99-5001                                            │
+│  E-Mail:    poststelle@brh.bund.de                                     │
+│  Website:   www.bundesrechnungshof.de                                  │
+│  Leitung:   Präsident Dr. Kay Scheller                                 │
+│                                                                [Bearbeiten]
+│                                                                         │
+│  BENUTZER                                                               │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  │ Name              │ Rolle          │ Team           │ Status │      │
+│  │───────────────────│────────────────│────────────────│────────│      │
+│  │ Sabine Meier      │ authority_head │ -              │ ✅     │      │
+│  │ Klaus Fischer     │ team_leader    │ Team A         │ ✅     │      │
+│  │ Julia Bauer       │ auditor        │ Team A         │ ✅     │      │
+│  │ Michael Wolf      │ viewer         │ -              │ ✅     │      │
+│  │ ...               │                │                │        │      │
+│                                                                         │
+│  [+ Neuer Benutzer]  (Lizenzinfo: 15 von 20 Plätzen belegt)            │
+│                                                                         │
+│  BEHÖRDEN-TEMPLATES (überschreiben Konzern-Templates)                   │
+│  ─────────────────────────────────────────────────────────────────────  │
+│  │ Template                        │ Basis           │ Status │        │
+│  │─────────────────────────────────│─────────────────│────────│        │
+│  │ BRH-Checkliste Vor-Ort         │ EU-Standard     │ Aktiv  │        │
+│  │ BRH-Berichtvorlage             │ EU-Standard     │ Aktiv  │        │
+│  │ BRH-Findings-Kategorien        │ (eigene)        │ Aktiv  │        │
+│                                                                         │
+│  [+ Neues Template]  [Konzern-Template überschreiben]                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Organisations-Layer (Mandanten-Hierarchie)
 
 Das System bildet eine hierarchische Organisationsstruktur ab:
