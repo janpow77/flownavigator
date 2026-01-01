@@ -63,6 +63,7 @@ async def vendor_admin(test_db, vendor) -> dict:
     """Create a vendor admin user."""
     user_id = uuid.uuid4()
     now = datetime.now(timezone.utc)
+    email = f"admin_{user_id.hex[:8]}@flowaudit.de"
 
     await test_db.execute(
         text(
@@ -71,13 +72,12 @@ async def vendor_admin(test_db, vendor) -> dict:
                 role, first_name, last_name, is_active, created_at, updated_at)
             VALUES (:id, :vendor_id, :email, :hashed_password,
                 :role, :first_name, :last_name, true, :created_at, :updated_at)
-            ON CONFLICT (email) DO NOTHING
             """
         ),
         {
             "id": user_id,
             "vendor_id": uuid.UUID(vendor["id"]),
-            "email": "admin@flowaudit.de",
+            "email": email,
             "hashed_password": get_password_hash("password123"),
             "role": "vendor_admin",
             "first_name": "Admin",
@@ -91,7 +91,7 @@ async def vendor_admin(test_db, vendor) -> dict:
     return {
         "id": str(user_id),
         "vendor_id": vendor["id"],
-        "email": "admin@flowaudit.de",
+        "email": email,
         "role": "vendor_admin",
     }
 
@@ -101,6 +101,7 @@ async def vendor_support(test_db, vendor) -> dict:
     """Create a vendor support user."""
     user_id = uuid.uuid4()
     now = datetime.now(timezone.utc)
+    email = f"support_{user_id.hex[:8]}@flowaudit.de"
 
     await test_db.execute(
         text(
@@ -109,13 +110,12 @@ async def vendor_support(test_db, vendor) -> dict:
                 role, first_name, last_name, is_active, created_at, updated_at)
             VALUES (:id, :vendor_id, :email, :hashed_password,
                 :role, :first_name, :last_name, true, :created_at, :updated_at)
-            ON CONFLICT (email) DO NOTHING
             """
         ),
         {
             "id": user_id,
             "vendor_id": uuid.UUID(vendor["id"]),
-            "email": "support@flowaudit.de",
+            "email": email,
             "hashed_password": get_password_hash("password123"),
             "role": "vendor_support",
             "first_name": "Support",
@@ -129,7 +129,7 @@ async def vendor_support(test_db, vendor) -> dict:
     return {
         "id": str(user_id),
         "vendor_id": vendor["id"],
-        "email": "support@flowaudit.de",
+        "email": email,
         "role": "vendor_support",
     }
 
@@ -139,6 +139,7 @@ async def vendor_developer(test_db, vendor) -> dict:
     """Create a vendor developer user."""
     user_id = uuid.uuid4()
     now = datetime.now(timezone.utc)
+    email = f"developer_{user_id.hex[:8]}@flowaudit.de"
 
     await test_db.execute(
         text(
@@ -147,13 +148,12 @@ async def vendor_developer(test_db, vendor) -> dict:
                 role, first_name, last_name, is_active, created_at, updated_at)
             VALUES (:id, :vendor_id, :email, :hashed_password,
                 :role, :first_name, :last_name, true, :created_at, :updated_at)
-            ON CONFLICT (email) DO NOTHING
             """
         ),
         {
             "id": user_id,
             "vendor_id": uuid.UUID(vendor["id"]),
-            "email": "developer@flowaudit.de",
+            "email": email,
             "hashed_password": get_password_hash("password123"),
             "role": "vendor_developer",
             "first_name": "Developer",
@@ -167,7 +167,7 @@ async def vendor_developer(test_db, vendor) -> dict:
     return {
         "id": str(user_id),
         "vendor_id": vendor["id"],
-        "email": "developer@flowaudit.de",
+        "email": email,
         "role": "vendor_developer",
     }
 
@@ -177,6 +177,7 @@ async def vendor_qa(test_db, vendor) -> dict:
     """Create a vendor QA user."""
     user_id = uuid.uuid4()
     now = datetime.now(timezone.utc)
+    email = f"qa_{user_id.hex[:8]}@flowaudit.de"
 
     await test_db.execute(
         text(
@@ -185,13 +186,12 @@ async def vendor_qa(test_db, vendor) -> dict:
                 role, first_name, last_name, is_active, created_at, updated_at)
             VALUES (:id, :vendor_id, :email, :hashed_password,
                 :role, :first_name, :last_name, true, :created_at, :updated_at)
-            ON CONFLICT (email) DO NOTHING
             """
         ),
         {
             "id": user_id,
             "vendor_id": uuid.UUID(vendor["id"]),
-            "email": "qa@flowaudit.de",
+            "email": email,
             "hashed_password": get_password_hash("password123"),
             "role": "vendor_qa",
             "first_name": "QA",
@@ -205,7 +205,7 @@ async def vendor_qa(test_db, vendor) -> dict:
     return {
         "id": str(user_id),
         "vendor_id": vendor["id"],
-        "email": "qa@flowaudit.de",
+        "email": email,
         "role": "vendor_qa",
     }
 
@@ -364,13 +364,14 @@ class TestVendorAPI:
     ):
         """AC-1.1.2: VendorUser kann mit allen 4 Rollen erstellt werden."""
         roles = ["vendor_admin", "vendor_support", "vendor_developer", "vendor_qa"]
+        unique_suffix = uuid.uuid4().hex[:8]
 
         for role in roles:
             response = await client.post(
                 "/api/v1/vendor/users",
                 headers=vendor_admin_headers,
                 json={
-                    "email": f"{role}_test@flowaudit.de",
+                    "email": f"{role}_{unique_suffix}@flowaudit.de",
                     "password": "password123",
                     "first_name": "Test",
                     "last_name": role,
@@ -416,19 +417,19 @@ class TestCustomerAPI:
             text(
                 """
                 INSERT INTO customers (id, vendor_id, tenant_id, contract_number,
-                    licensed_users, licensed_authorities, status, created_at, updated_at)
+                    licensed_users, licensed_authorities, billing_address_country, status, created_at, updated_at)
                 VALUES (:id, :vendor_id, :tenant_id, :contract_number,
-                    :licensed_users, :licensed_authorities, :status, :created_at, :updated_at)
-                ON CONFLICT (id) DO NOTHING
+                    :licensed_users, :licensed_authorities, :billing_address_country, :status, :created_at, :updated_at)
                 """
             ),
             {
                 "id": customer_id,
                 "vendor_id": uuid.UUID(vendor["id"]),
                 "tenant_id": tenant_id,
-                "contract_number": "2024-TEST-001",
+                "contract_number": f"2024-TEST-{customer_id.hex[:6]}",
                 "licensed_users": 50,
                 "licensed_authorities": 5,
+                "billing_address_country": "Deutschland",
                 "status": "active",
                 "created_at": now,
                 "updated_at": now,

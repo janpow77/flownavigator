@@ -6,11 +6,5 @@
     "jsx": "preserve",
     "jsxImportSource": "vue"
   },
-  "include": ["src/**/*", "src/**/*.vue"],
-  "references": [
-    { "path": "../../core/common" },
-    { "path": "../../domain/checklists" },
-    { "path": "../../domain/group-queries" },
-    { "path": "../../documents/document-box" }
-  ]
+  "include": ["src/**/*", "src/**/*.vue"]
 }
