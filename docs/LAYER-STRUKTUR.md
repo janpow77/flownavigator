@@ -14,31 +14,30 @@ Das System bildet eine hierarchische Organisationsstruktur ab:
         ┌───────────────────┴───────────────────┐
         │                                       │
         ▼                                       ▼
-┌───────────────────────┐             ┌───────────────────────┐
-│      KONZERN A        │             │      KONZERN B        │
-│   (type="group")      │             │   (type="group")      │
-│    group_admin        │             │    group_admin        │
-└───────────┬───────────┘             └───────────┬───────────┘
+┌───────────────────────────┐         ┌───────────────────────────┐
+│  COORDINATION BODY A      │         │  COORDINATION BODY B      │
+│  (Konzern, type="group")  │         │  (Konzern, type="group")  │
+│  ─────────────────────    │         │  ─────────────────────    │
+│  • group_admin            │         │  • group_admin            │
+│  • authority_head         │         │  • authority_head         │
+│  • team_leader            │         │  • team_leader            │
+│  • auditor                │         │  • auditor                │
+│  • viewer                 │         │  • viewer                 │
+└───────────┬───────────────┘         └───────────┬───────────────┘
             │                                     │
     ┌───────┴───────┐                     ┌───────┴───────┐
     │               │                     │               │
     ▼               ▼                     ▼               ▼
-┌─────────┐   ┌─────────┐           ┌─────────┐   ┌─────────┐
-│Prüf-    │   │Prüf-    │           │Prüf-    │   │Prüf-    │
-│behörde A│   │behörde B│           │behörde C│   │behörde D│
-│(auth.)  │   │(auth.)  │           │(auth.)  │   │(auth.)  │
-│authority│   │authority│           │authority│   │authority│
-│_head    │   │_head    │           │_head    │   │_head    │
-└────┬────┘   └────┬────┘           └────┬────┘   └────┬────┘
-     │             │                     │             │
-     ▼             ▼                     ▼             ▼
-┌─────────┐   ┌─────────┐           ┌─────────┐   ┌─────────┐
-│ Teams   │   │ Teams   │           │ Teams   │   │ Teams   │
-│team_    │   │team_    │           │team_    │   │team_    │
-│leader   │   │leader   │           │leader   │   │leader   │
-│auditor  │   │auditor  │           │auditor  │   │auditor  │
-│viewer   │   │viewer   │           │viewer   │   │viewer   │
-└─────────┘   └─────────┘           └─────────┘   └─────────┘
+┌─────────────┐ ┌─────────────┐     ┌─────────────┐ ┌─────────────┐
+│Prüfbehörde A│ │Prüfbehörde B│     │Prüfbehörde C│ │Prüfbehörde D│
+│(authority)  │ │(authority)  │     │(authority)  │ │(authority)  │
+│─────────────│ │─────────────│     │─────────────│ │─────────────│
+│• authority_ │ │• authority_ │     │• authority_ │ │• authority_ │
+│  head       │ │  head       │     │  head       │ │  head       │
+│• team_leader│ │• team_leader│     │• team_leader│ │• team_leader│
+│• auditor    │ │• auditor    │     │• auditor    │ │• auditor    │
+│• viewer     │ │• viewer     │     │• viewer     │ │• viewer     │
+└─────────────┘ └─────────────┘     └─────────────┘ └─────────────┘
 ```
 
 ### Tenant-Modell (Datenbank)
@@ -47,17 +46,17 @@ Das System bildet eine hierarchische Organisationsstruktur ab:
 class Tenant:
     id: UUID
     name: str                    # z.B. "Bundesrechnungshof"
-    type: "group" | "authority"  # Konzern oder Prüfbehörde
-    parent_id: UUID | None       # Prüfbehörde → gehört zu Konzern
+    type: "group" | "authority"  # Coordination Body oder Prüfbehörde
+    parent_id: UUID | None       # Prüfbehörde → gehört zu Coordination Body
     status: "active" | "suspended" | "trial"
 ```
 
 **Beispiel-Hierarchie:**
 ```
-Konzern "Bundesrepublik Deutschland" (type="group")
-├── Prüfbehörde "Bundesrechnungshof" (type="authority", parent_id=Konzern)
-├── Prüfbehörde "Landesrechnungshof Bayern" (type="authority", parent_id=Konzern)
-└── Prüfbehörde "Landesrechnungshof NRW" (type="authority", parent_id=Konzern)
+Coordination Body "EU-Prüfungskoordination" (type="group")
+├── Prüfbehörde "Bundesrechnungshof" (type="authority", parent_id=Coordination Body)
+├── Prüfbehörde "Landesrechnungshof Bayern" (type="authority", parent_id=Coordination Body)
+└── Prüfbehörde "Landesrechnungshof NRW" (type="authority", parent_id=Coordination Body)
 ```
 
 ---
@@ -66,12 +65,19 @@ Konzern "Bundesrepublik Deutschland" (type="group")
 
 | Organisations-Layer | Rollen | Zugriffs-Scope |
 |---------------------|--------|----------------|
-| **System** | `system_admin` | Alle Konzerne, alle Behörden, alle Daten |
-| **Konzern** | `group_admin` | Eigener Konzern + alle untergeordneten Prüfbehörden |
-| **Prüfbehörde** | `authority_head` | Nur eigene Prüfbehörde |
-| **Team** | `team_leader` | Zugewiesene Prüfungsfälle innerhalb der Behörde |
-| **Prüfer** | `auditor` | Nur zugewiesene Prüfungsfälle |
-| **Beobachter** | `viewer` | Lesezugriff auf eigene Behörde |
+| **System** | `system_admin` | Alle Coordination Bodies, alle Behörden, alle Daten |
+| **Coordination Body** (Konzern) | `group_admin`, `authority_head`, `team_leader`, `auditor`, `viewer` | Eigener Konzern + alle untergeordneten Prüfbehörden |
+| **Prüfbehörde** | `authority_head`, `team_leader`, `auditor`, `viewer` | Nur eigene Prüfbehörde |
+
+### Rollen-Bedeutung je Ebene
+
+| Rolle | Auf Coordination Body | Auf Prüfbehörde |
+|-------|----------------------|-----------------|
+| `group_admin` | Verwaltet den gesamten Konzern und alle Behörden | - (nicht auf Behörden-Ebene) |
+| `authority_head` | Leitet Koordinationsstelle | Leitet Prüfbehörde |
+| `team_leader` | Führt Konzern-weite Prüfteams | Führt Prüfteams in der Behörde |
+| `auditor` | Prüfer auf Konzern-Ebene | Prüfer in der Behörde |
+| `viewer` | Lesezugriff auf Konzern-Daten | Lesezugriff auf Behörden-Daten |
 
 ---
 
@@ -374,22 +380,26 @@ CREATE TYPE audit_case_status AS ENUM (
 ────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
 SYSTEM-EBENE        │  R/W   │   -    │    -    │   -    │   -    │  -
 ────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
-KONZERN             │  R/W   │  R/W   │    -    │   -    │   -    │  -
-(type="group")      │        │        │         │        │        │
+COORDINATION BODY   │  R/W   │  R/W   │   R/W   │  R/W   │  R/W   │  R
+(type="group")      │        │        │         │        │(nur    │
+                    │        │        │         │        │zugewi.)│
 ────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
-PRÜFBEHÖRDE A       │  R/W   │  R/W   │   R/W   │   R    │   R    │  R
-(type="authority")  │        │        │         │        │        │
+PRÜFBEHÖRDE A       │  R/W   │  R/W   │   R/W   │  R/W   │  R/W   │  R
+(type="authority")  │        │        │         │        │(nur    │
+                    │        │        │         │        │zugewi.)│
 ────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
-PRÜFBEHÖRDE B       │  R/W   │  R/W   │   R/W   │   R    │   R    │  R
-(type="authority")  │        │        │         │        │        │
-────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
-PRÜFFALL            │  R/W   │  R/W   │   R/W   │  R/W   │  R/W   │  R
-(innerhalb Behörde) │        │        │         │        │(nur    │
+PRÜFBEHÖRDE B       │  R/W   │  R/W   │   R/W   │  R/W   │  R/W   │  R
+(type="authority")  │        │        │         │        │(nur    │
                     │        │        │         │        │zugewi.)│
 ────────────────────┴────────┴────────┴─────────┴────────┴────────┴──────
 
 R = Lesen, W = Schreiben, - = Kein Zugriff
 ```
+
+**Hinweis:** Sowohl Coordination Body als auch Prüfbehörden haben dieselben Rollen.
+Der Unterschied liegt im Scope:
+- Rollen auf **Coordination Body** haben Zugriff auf den Konzern UND alle untergeordneten Behörden
+- Rollen auf **Prüfbehörde** haben nur Zugriff auf die eigene Behörde
 
 ### Technische Layer × Rollen
 
@@ -405,9 +415,31 @@ R = Lesen, W = Schreiben, - = Kein Zugriff
 
 | Rolle | Kann verwalten | Wird verwaltet von |
 |-------|----------------|-------------------|
-| `system_admin` | Alles (Konzerne, Behörden, Benutzer) | - |
-| `group_admin` | Behörden im Konzern, Benutzer | `system_admin` |
-| `authority_head` | Teams, Prüfer in der Behörde | `group_admin`, `system_admin` |
+| `system_admin` | Alles (Coordination Bodies, Behörden, Benutzer) | - |
+| `group_admin` | Coordination Body, alle Behörden im Konzern, Benutzer | `system_admin` |
+| `authority_head` | Eigene Ebene (Coordination Body ODER Behörde), Teams, Prüfer | `group_admin`, `system_admin` |
 | `team_leader` | Prüfungsfälle, Prüfer-Zuweisungen | `authority_head` |
 | `auditor` | Eigene Prüfungsfälle | `team_leader` |
 | `viewer` | Nichts (nur lesen) | `authority_head` |
+
+### Beispiel: Benutzer-Zuordnung
+
+```
+Coordination Body "EU-Prüfungskoordination"
+├── Max Müller (group_admin) ─────────── Verwaltet gesamten Konzern
+├── Anna Schmidt (authority_head) ────── Leitet die Koordinationsstelle
+├── Peter Weber (team_leader) ────────── Führt Konzern-übergreifendes Team
+├── Lisa Koch (auditor) ──────────────── Prüferin auf Konzern-Ebene
+├── Tom Braun (viewer) ───────────────── Lesezugriff auf Konzern
+│
+├── Prüfbehörde "Bundesrechnungshof"
+│   ├── Sabine Meier (authority_head) ── Leitet den Bundesrechnungshof
+│   ├── Klaus Fischer (team_leader) ──── Führt Prüfteam
+│   ├── Julia Bauer (auditor) ────────── Prüferin
+│   └── Michael Wolf (viewer) ────────── Lesezugriff
+│
+└── Prüfbehörde "Landesrechnungshof Bayern"
+    ├── Eva Schwarz (authority_head) ─── Leitet LRH Bayern
+    ├── Dirk Hoffmann (team_leader) ──── Führt Prüfteam
+    └── Nina Schulz (auditor) ─────────── Prüferin
+```
