@@ -3166,7 +3166,529 @@ POST /api/v1/billing/export                   → Export als CSV/PDF
 
 ---
 
-## 16. Erweiterungen für die Zukunft
+## 16. Zentrale Speicherung: i18n, GUI & Konfiguration
+
+**Kernprinzip:** Alle konfigurierbaren Elemente (Übersetzungen, UI-Komponenten, Design-Tokens) werden zentral in der Datenbank gespeichert und in pgvector indexiert, um Konsistenz und Durchsuchbarkeit zu gewährleisten.
+
+### 16.1 Zentrale i18n-Verwaltung
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      AKTUELLE vs. ZENTRALE ARCHITEKTUR                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  AKTUELL (Problematisch):                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  apps/frontend/src/locales/de.json  ← Statische Datei                   │    │
+│  │  apps/frontend/src/locales/en.json  ← Manuell gepflegt                  │    │
+│  │            ↓                                                             │    │
+│  │  localStorage ← Nutzer-Sprachauswahl                                    │    │
+│  │            ↓                                                             │    │
+│  │  vue-i18n ← Lädt nur beim Build                                         │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ZIEL (Zentral):                                                                │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │  PostgreSQL: translations ← Single Source of Truth                      │    │
+│  │            ↓                                                             │    │
+│  │  pgvector: translation_embeddings ← Semantische Suche                   │    │
+│  │            ↓                                                             │    │
+│  │  API: /api/v1/i18n/{locale} ← Dynamisches Laden                         │    │
+│  │            ↓                                                             │    │
+│  │  Frontend Cache + vue-i18n ← Reaktive Updates                           │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 16.2 Datenmodell für Übersetzungen
+
+```python
+# apps/backend/app/models/i18n.py
+
+class TranslationNamespace(Base, TimestampMixin):
+    """Gruppierung von Übersetzungen (z.B. 'common', 'auditCases', 'development')."""
+
+    __tablename__ = "translation_namespaces"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    module_package_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)  # Kern-Übersetzungen
+
+
+class Translation(Base, TimestampMixin):
+    """Einzelne Übersetzung mit allen Sprachen."""
+
+    __tablename__ = "translations"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    namespace_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("translation_namespaces.id", ondelete="CASCADE")
+    )
+    key: Mapped[str] = mapped_column(String(255), nullable=False)  # z.B. "common.save"
+
+    # Übersetzungen pro Sprache
+    de: Mapped[str] = mapped_column(Text, nullable=False)
+    en: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Metadaten
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)  # Kontext für Übersetzer
+    max_length: Mapped[int | None] = mapped_column(Integer, nullable=True)  # UI-Constraint
+    placeholders: Mapped[list[str]] = mapped_column(JSONB, default=list)  # z.B. ["{name}", "{count}"]
+
+    # Änderungs-Tracking
+    last_modified_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('namespace_id', 'key', name='uq_translation_key'),
+    )
+
+
+class TranslationEmbedding(Base):
+    """Vector-Embeddings für semantische Übersetzungs-Suche."""
+
+    __tablename__ = "translation_embeddings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    translation_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("translations.id", ondelete="CASCADE")
+    )
+    locale: Mapped[str] = mapped_column(String(5), nullable=False)  # 'de', 'en'
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)
+
+    __table_args__ = (
+        Index('idx_translation_embedding', 'embedding', postgresql_using='ivfflat'),
+    )
+```
+
+### 16.3 i18n-Service mit Caching
+
+```python
+# apps/backend/app/services/i18n_service.py
+
+from functools import lru_cache
+from typing import TypedDict
+
+class I18nService:
+    """Zentraler Service für Übersetzungen."""
+
+    CACHE_TTL = 300  # 5 Minuten
+
+    async def get_translations(
+        self,
+        locale: str,
+        namespaces: list[str] | None = None
+    ) -> dict[str, dict[str, str]]:
+        """Lädt Übersetzungen für ein Locale."""
+
+        cache_key = f"i18n:{locale}:{','.join(namespaces or ['all'])}"
+        cached = await self.cache.get(cache_key)
+        if cached:
+            return cached
+
+        query = select(Translation).join(TranslationNamespace)
+        if namespaces:
+            query = query.where(TranslationNamespace.name.in_(namespaces))
+
+        result = await self.db.execute(query)
+        translations = result.scalars().all()
+
+        # Strukturiert wie vue-i18n erwartet
+        output = {}
+        for t in translations:
+            namespace = t.namespace.name
+            if namespace not in output:
+                output[namespace] = {}
+
+            key_parts = t.key.split('.')
+            current = output[namespace]
+            for part in key_parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            current[key_parts[-1]] = getattr(t, locale) or t.de  # Fallback auf Deutsch
+
+        await self.cache.set(cache_key, output, ttl=self.CACHE_TTL)
+        return output
+
+    async def search_translations(
+        self,
+        query: str,
+        locale: str = "de",
+        limit: int = 20
+    ) -> list[dict]:
+        """Semantische Suche in Übersetzungen."""
+
+        embedding = await self.create_embedding(query)
+
+        result = await self.db.execute("""
+            SELECT
+                t.id, t.key, t.de, t.en, t.context,
+                tn.name as namespace,
+                1 - (te.embedding <=> $1) as similarity
+            FROM translation_embeddings te
+            JOIN translations t ON te.translation_id = t.id
+            JOIN translation_namespaces tn ON t.namespace_id = tn.id
+            WHERE te.locale = $2
+            ORDER BY te.embedding <=> $1
+            LIMIT $3
+        """, [embedding, locale, limit])
+
+        return [dict(row) for row in result.fetchall()]
+
+    async def update_translation(
+        self,
+        key: str,
+        locale: str,
+        value: str,
+        user_id: str
+    ) -> None:
+        """Aktualisiert eine Übersetzung und invalidiert Cache."""
+
+        translation = await self.get_by_key(key)
+        setattr(translation, locale, value)
+        translation.last_modified_by = user_id
+
+        await self.db.commit()
+
+        # Embedding neu erstellen
+        await self.update_embedding(translation.id, locale, value)
+
+        # Cache invalidieren
+        await self.invalidate_cache_for_namespace(translation.namespace.name)
+```
+
+### 16.4 Frontend-Integration
+
+```typescript
+// apps/frontend/src/composables/useCentralI18n.ts
+
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { i18nApi } from '@/api/i18n'
+
+export function useCentralI18n() {
+  const { locale, setLocaleMessage, t } = useI18n()
+  const isLoading = ref(false)
+  const lastSync = ref<Date | null>(null)
+
+  /**
+   * Lädt Übersetzungen vom Server und merged sie in vue-i18n
+   */
+  async function loadTranslations(
+    targetLocale: string,
+    namespaces?: string[]
+  ) {
+    isLoading.value = true
+    try {
+      const translations = await i18nApi.getTranslations(targetLocale, namespaces)
+
+      // Merge mit existierenden Übersetzungen
+      const current = getLocaleMessage(targetLocale) || {}
+      const merged = deepMerge(current, translations)
+
+      setLocaleMessage(targetLocale, merged)
+      lastSync.value = new Date()
+
+      // In localStorage cachen für Offline-Fähigkeit
+      localStorage.setItem(
+        `i18n:${targetLocale}`,
+        JSON.stringify({ data: merged, timestamp: Date.now() })
+      )
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Initiale Ladung mit Fallback auf Cache
+   */
+  async function initialize() {
+    const cached = localStorage.getItem(`i18n:${locale.value}`)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      // Cache älter als 5 Minuten? Im Hintergrund aktualisieren
+      if (Date.now() - timestamp > 5 * 60 * 1000) {
+        setLocaleMessage(locale.value, data)
+        loadTranslations(locale.value) // Background refresh
+      } else {
+        setLocaleMessage(locale.value, data)
+      }
+    } else {
+      await loadTranslations(locale.value)
+    }
+  }
+
+  // Bei Sprachwechsel neu laden
+  watch(locale, (newLocale) => {
+    loadTranslations(newLocale)
+  })
+
+  return {
+    isLoading,
+    lastSync,
+    loadTranslations,
+    initialize,
+    t
+  }
+}
+```
+
+### 16.5 Zentrale GUI-Konfiguration
+
+```python
+# apps/backend/app/models/ui_config.py
+
+class UIComponent(Base, TimestampMixin):
+    """Registrierte UI-Komponenten mit Metadaten."""
+
+    __tablename__ = "ui_components"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)  # z.B. "BaseButton"
+    module_package_name: Mapped[str | None] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(50))  # "form", "layout", "feedback"
+
+    # Komponenten-Definition
+    props_schema: Mapped[dict] = mapped_column(JSONB, default=dict)  # JSON Schema
+    slots: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    events: Mapped[list[str]] = mapped_column(JSONB, default=list)
+
+    # Dokumentation
+    description_de: Mapped[str | None] = mapped_column(Text)
+    description_en: Mapped[str | None] = mapped_column(Text)
+    usage_example: Mapped[str | None] = mapped_column(Text)
+
+    # Für pgvector-Suche
+    searchable_content: Mapped[str | None] = mapped_column(Text)
+
+
+class DesignToken(Base, TimestampMixin):
+    """Design-Tokens (Farben, Abstände, etc.)."""
+
+    __tablename__ = "design_tokens"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    category: Mapped[str] = mapped_column(String(50))  # "color", "spacing", "typography"
+    name: Mapped[str] = mapped_column(String(100))  # z.B. "primary-500"
+    css_variable: Mapped[str] = mapped_column(String(100))  # "--color-primary-500"
+
+    # Werte pro Theme
+    value_light: Mapped[str] = mapped_column(String(100))
+    value_dark: Mapped[str] = mapped_column(String(100))
+
+    # Semantic Alias (optional)
+    alias_for: Mapped[str | None] = mapped_column(String(100))
+
+    __table_args__ = (
+        UniqueConstraint('category', 'name', name='uq_design_token'),
+    )
+
+
+class UserUIPreference(Base, TimestampMixin):
+    """Nutzer-spezifische UI-Einstellungen (zentral gespeichert)."""
+
+    __tablename__ = "user_ui_preferences"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True
+    )
+
+    # Erscheinungsbild
+    theme: Mapped[str] = mapped_column(String(20), default="system")  # light/dark/system
+    accent_color: Mapped[str] = mapped_column(String(20), default="blue")
+    font_size: Mapped[str] = mapped_column(String(20), default="medium")
+    reduced_motion: Mapped[bool] = mapped_column(Boolean, default=False)
+    high_contrast: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Navigation
+    default_view: Mapped[str] = mapped_column(String(20), default="tiles")
+    sidebar_collapsed: Mapped[bool] = mapped_column(Boolean, default=False)
+    enable_animations: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Dashboard
+    start_page: Mapped[str] = mapped_column(String(100), default="/dashboard")
+    visible_widgets: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    widget_order: Mapped[list[str]] = mapped_column(JSONB, default=list)
+
+    # Sprache & Region
+    locale: Mapped[str] = mapped_column(String(5), default="de")
+    date_format: Mapped[str] = mapped_column(String(20), default="DD.MM.YYYY")
+    time_format: Mapped[str] = mapped_column(String(5), default="24h")
+    timezone: Mapped[str] = mapped_column(String(50), default="Europe/Berlin")
+
+    # Modul-spezifische Einstellungen
+    module_preferences: Mapped[dict] = mapped_column(JSONB, default=dict)
+```
+
+### 16.6 Sync-Mechanismus für GUI-Config
+
+```python
+# apps/backend/app/services/ui_config_service.py
+
+class UIConfigService:
+    """Service für zentrale UI-Konfiguration."""
+
+    async def sync_design_tokens_to_vector(self) -> int:
+        """Synchronisiert Design-Tokens in pgvector für Suche."""
+
+        tokens = await self.db.execute(select(DesignToken))
+        count = 0
+
+        for token in tokens.scalars():
+            content = f"""
+            Design Token: {token.name}
+            Category: {token.category}
+            CSS Variable: {token.css_variable}
+            Light Value: {token.value_light}
+            Dark Value: {token.value_dark}
+            """
+
+            embedding = await self.create_embedding(content)
+
+            await self.upsert_embedding(
+                entity_type="design_token",
+                entity_id=str(token.id),
+                content=content,
+                embedding=embedding,
+                metadata={
+                    "category": token.category,
+                    "name": token.name,
+                    "css_variable": token.css_variable
+                }
+            )
+            count += 1
+
+        return count
+
+    async def sync_components_to_vector(self) -> int:
+        """Synchronisiert UI-Komponenten in pgvector."""
+
+        components = await self.db.execute(select(UIComponent))
+        count = 0
+
+        for comp in components.scalars():
+            content = f"""
+            Component: {comp.name}
+            Category: {comp.category}
+            Module: {comp.module_package_name or 'core'}
+            Description: {comp.description_de}
+            Props: {json.dumps(comp.props_schema)}
+            Events: {', '.join(comp.events)}
+            """
+
+            embedding = await self.create_embedding(content)
+
+            await self.upsert_embedding(
+                entity_type="ui_component",
+                entity_id=str(comp.id),
+                content=content,
+                embedding=embedding,
+                metadata={
+                    "name": comp.name,
+                    "category": comp.category,
+                    "module": comp.module_package_name
+                }
+            )
+            count += 1
+
+        return count
+
+    async def get_user_config_with_defaults(
+        self,
+        user_id: str
+    ) -> dict:
+        """Lädt User-Config mit System-Defaults."""
+
+        # User-Preferences
+        user_prefs = await self.get_user_preferences(user_id)
+
+        # System-Defaults
+        defaults = await self.get_system_defaults()
+
+        # Design-Tokens für gewähltes Theme
+        theme = user_prefs.theme if user_prefs else "system"
+        tokens = await self.get_design_tokens_for_theme(theme)
+
+        return {
+            "preferences": user_prefs.to_dict() if user_prefs else defaults,
+            "tokens": tokens,
+            "available_themes": ["light", "dark", "system"],
+            "available_accents": ["blue", "purple", "green", "orange", "pink", "teal"],
+            "available_views": ["tiles", "list", "tree", "radial", "minimal"]
+        }
+```
+
+### 16.7 Admin-UI für Übersetzungs-Verwaltung
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  🌐 ÜBERSETZUNGSVERWALTUNG                                      [System-Admin] │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Namespace: [common ▼]        Suche: [____________________] 🔍                 │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ KEY                    │ DEUTSCH              │ ENGLISH          │ ⚙️  │    │
+│  ├────────────────────────┼──────────────────────┼──────────────────┼─────┤    │
+│  │ common.save            │ Speichern            │ Save             │ ✏️  │    │
+│  │ common.cancel          │ Abbrechen            │ Cancel           │ ✏️  │    │
+│  │ common.delete          │ Löschen              │ Delete           │ ✏️  │    │
+│  │ common.edit            │ Bearbeiten           │ Edit             │ ✏️  │    │
+│  │ common.loading         │ Laden...             │ Loading...       │ ✏️  │    │
+│  │ auth.login             │ Anmelden             │ Login            │ ✏️  │    │
+│  │ auth.logout            │ Abmelden             │ Logout           │ ✏️  │    │
+│  │ ⚠️ auth.forgotPassword │ Passwort vergessen?  │ ─── fehlt ───    │ ✏️  │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ BEARBEITEN: auth.login                                                  │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │                                                                          │    │
+│  │ Deutsch:  [Anmelden                    ]                                │    │
+│  │ English:  [Login                       ]                                │    │
+│  │                                                                          │    │
+│  │ Kontext:  [Button auf der Login-Seite  ]                                │    │
+│  │ Max. Länge: [20] Zeichen                                                │    │
+│  │                                                                          │    │
+│  │ [Speichern]  [Abbrechen]                                                │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  [+ Neue Übersetzung]  [📥 Import JSON]  [📤 Export JSON]  [🔄 Cache leeren]   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 16.8 API-Endpoints für i18n & UI-Config
+
+```
+# Übersetzungen
+GET  /api/v1/i18n/{locale}                     → Alle Übersetzungen für Locale
+GET  /api/v1/i18n/{locale}/{namespace}         → Namespace-spezifisch
+POST /api/v1/i18n/search                       → Semantische Suche
+PUT  /api/v1/i18n/translations/{key}           → Übersetzung aktualisieren (Admin)
+POST /api/v1/i18n/import                       → JSON importieren (Admin)
+GET  /api/v1/i18n/export/{locale}              → Als JSON exportieren
+
+# UI-Konfiguration
+GET  /api/v1/ui/config                         → User-Config mit Defaults
+PUT  /api/v1/ui/preferences                    → User-Preferences speichern
+GET  /api/v1/ui/design-tokens                  → Aktuelle Design-Tokens
+GET  /api/v1/ui/components                     → Registrierte Komponenten
+POST /api/v1/ui/sync                           → Manueller Sync zu pgvector (Admin)
+```
+
+---
+
+## 17. Erweiterungen für die Zukunft
 
 1. **Semantische Suche im Memory** - pgvector für bessere Korrektur-Findung
 2. **Auto-Dokumentation** - Generierung von CHANGELOG und Docs
