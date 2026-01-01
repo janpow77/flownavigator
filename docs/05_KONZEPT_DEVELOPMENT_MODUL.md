@@ -50,6 +50,254 @@ Das Development-Modul ist das zentrale Werkzeug zur Entwicklung neuer Module und
 
 ---
 
+## 1.1 User-Profil & Globale Präferenzen
+
+Bevor das Development-Modul arbeitet, werden **User-spezifische Präferenzen** geladen. Diese beeinflussen jeden LLM-Prompt.
+
+### Datenmodell: User Profile
+
+```sql
+CREATE TABLE user_profile (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Key-Value für flexible Präferenzen
+    key VARCHAR(100) NOT NULL,
+    value TEXT NOT NULL,
+    value_type VARCHAR(20) DEFAULT 'string',  -- string, json, boolean, number
+
+    -- Kategorisierung
+    category VARCHAR(50),                      -- code_style, language, llm, ui
+
+    last_updated TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(user_id, key)
+);
+
+CREATE INDEX idx_user_profile ON user_profile(user_id, category);
+```
+
+### Beispiel-Präferenzen
+
+| Key | Value | Kategorie | Beschreibung |
+|-----|-------|-----------|--------------|
+| `code_language` | `de` | code_style | Sprache für Code-Kommentare |
+| `vba_comments_language` | `de` | code_style | Sprache für VBA-Kommentare |
+| `error_handling_style` | `strukturierte Fehlerprozeduren auf Deutsch` | code_style | Fehlerbehandlungs-Stil |
+| `naming_convention` | `camelCase` | code_style | Namenskonvention |
+| `preferred_llm` | `anthropic` | llm | Bevorzugtes LLM |
+| `max_tokens_per_request` | `8000` | llm | Token-Limit |
+| `ui_language` | `de` | ui | UI-Sprache |
+| `notification_on_completion` | `true` | ui | Benachrichtigung bei Fertigstellung |
+
+### Integration in Context-Service
+
+```python
+class DevelopmentContextService:
+    async def build_context(self, session_id: str, ...) -> str:
+        # 1. IMMER ZUERST: User-Profil laden
+        user_profile = await self._get_user_profile(session.created_by)
+
+        # 2. User-Präferenzen als festen Block im Prompt
+        profile_context = self._format_user_profile(user_profile)
+
+        context_parts = [profile_context]  # Immer an erster Stelle!
+
+        # ... Rest des Kontexts
+
+    def _format_user_profile(self, profile: dict) -> str:
+        return f"""
+## Benutzer-Präferenzen (IMMER BEACHTEN!)
+
+Diese Präferenzen MÜSSEN bei jeder Code-Generierung befolgt werden:
+
+- **Code-Kommentare:** {profile.get('code_language', 'de')}
+- **Namenskonvention:** {profile.get('naming_convention', 'camelCase')}
+- **Fehlerbehandlung:** {profile.get('error_handling_style', 'Standard')}
+- **VBA-Kommentare:** {profile.get('vba_comments_language', 'de')}
+
+⚠️ Diese Präferenzen haben Vorrang vor allgemeinen Best Practices!
+"""
+```
+
+---
+
+## 1.2 Konzern- & Organisations-Hierarchie
+
+Das System unterstützt eine mehrstufige Hierarchie: **Konzern → Organisation → Mandant → Module**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         HIERARCHIE-MODELL                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  KONZERN (Group)                                                                │
+│  └─ Behörde XY / Holding ABC                                                    │
+│     │                                                                            │
+│     ├─ ORGANISATION A (Gesellschaft A1)                                         │
+│     │  ├─ Mandant: Produktion                                                   │
+│     │  │  ├─ Module: Checklists v3.2, Documents v1.5                           │
+│     │  │  └─ Eigene Parameter & Prüfregeln                                     │
+│     │  │                                                                        │
+│     │  └─ Mandant: Vertrieb                                                     │
+│     │     ├─ Module: Checklists v3.0 (ältere Version!)                         │
+│     │     └─ Andere Prüfregeln                                                 │
+│     │                                                                            │
+│     ├─ ORGANISATION B (Gesellschaft A2)                                         │
+│     │  └─ Mandant: Zentral                                                      │
+│     │     └─ Module: Nur Reports v1.0                                          │
+│     │                                                                            │
+│     └─ ORGANISATION C (Gesellschaft A3)                                         │
+│        └─ ...                                                                    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Datenmodell: Konzern-Struktur
+
+```sql
+-- Konzern (oberste Ebene)
+CREATE TABLE groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    name VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    description TEXT,
+
+    -- Konzern-weite Einstellungen
+    default_settings JSONB DEFAULT '{}',
+    allowed_modules JSONB DEFAULT '[]',      -- Welche Module darf der Konzern nutzen?
+
+    -- Branding
+    logo_url VARCHAR(500),
+    primary_color VARCHAR(20),
+
+    -- Status
+    status VARCHAR(20) DEFAULT 'active',
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Organisation (Gesellschaft innerhalb des Konzerns)
+CREATE TABLE organizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID REFERENCES groups(id) ON DELETE CASCADE,
+
+    name VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    org_type VARCHAR(50),                    -- holding, subsidiary, branch, department
+
+    -- Organisations-spezifische Einstellungen (überschreiben Konzern)
+    settings_override JSONB DEFAULT '{}',
+    allowed_modules JSONB DEFAULT '[]',      -- Kann einschränken, nicht erweitern
+
+    -- Kontakt
+    contact_email VARCHAR(255),
+
+    status VARCHAR(20) DEFAULT 'active',
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(group_id, name)
+);
+
+-- Mandant (bestehende Tabelle erweitern)
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS
+    organization_id UUID REFERENCES organizations(id);
+
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS
+    settings_override JSONB DEFAULT '{}';   -- Überschreibt Org-Settings
+
+-- Modul-Instanz pro Mandant (welche Version ist wo aktiv?)
+CREATE TABLE tenant_module_instances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    module_id UUID REFERENCES module_registry(id),
+
+    -- Versionierung
+    installed_version VARCHAR(20) NOT NULL,
+    target_version VARCHAR(20),              -- Falls Update geplant
+
+    -- Mandanten-spezifische Konfiguration
+    config_override JSONB DEFAULT '{}',
+
+    -- Status
+    status VARCHAR(20) DEFAULT 'active',     -- active, disabled, updating
+
+    installed_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(tenant_id, module_id)
+);
+
+CREATE INDEX idx_tenant_modules ON tenant_module_instances(tenant_id);
+```
+
+### Hierarchische Einstellungs-Vererbung
+
+```python
+def get_effective_settings(tenant_id: str) -> dict:
+    """
+    Ermittelt effektive Einstellungen durch Hierarchie-Vererbung.
+    Priorität: Mandant > Organisation > Konzern > System-Default
+    """
+    tenant = get_tenant(tenant_id)
+    org = get_organization(tenant.organization_id)
+    group = get_group(org.group_id)
+
+    # Basis: System-Defaults
+    settings = SYSTEM_DEFAULTS.copy()
+
+    # Konzern-Ebene
+    settings.update(group.default_settings)
+
+    # Organisations-Ebene (überschreibt Konzern)
+    settings.update(org.settings_override)
+
+    # Mandanten-Ebene (überschreibt Organisation)
+    settings.update(tenant.settings_override)
+
+    return settings
+```
+
+### Modul-Verfügbarkeit pro Ebene
+
+```sql
+-- View: Welche Module sind für einen Mandanten verfügbar?
+CREATE VIEW v_tenant_available_modules AS
+SELECT
+    t.id AS tenant_id,
+    m.id AS module_id,
+    m.name AS module_name,
+    m.current_version,
+    tmi.installed_version,
+    tmi.status AS install_status,
+    CASE
+        WHEN m.id = ANY(
+            SELECT jsonb_array_elements_text(o.allowed_modules)::uuid
+            FROM organizations o WHERE o.id = t.organization_id
+        ) THEN true
+        ELSE false
+    END AS allowed_by_org,
+    CASE
+        WHEN m.id = ANY(
+            SELECT jsonb_array_elements_text(g.allowed_modules)::uuid
+            FROM groups g
+            JOIN organizations o ON o.group_id = g.id
+            WHERE o.id = t.organization_id
+        ) THEN true
+        ELSE false
+    END AS allowed_by_group
+FROM tenants t
+CROSS JOIN module_registry m
+LEFT JOIN tenant_module_instances tmi
+    ON tmi.tenant_id = t.id AND tmi.module_id = m.id;
+```
+
+---
+
 ## 2. Phase 1: Modul-Auswahl
 
 ### 2.1 Zwei Modi
@@ -1259,7 +1507,561 @@ CREATE TABLE llm_routing_config (
 
 ---
 
-## 12. Erweiterungen für die Zukunft
+## 12. Git-Integration (Versionskontrolle)
+
+### 12.1 Das Problem: Code-Injection-Lücke
+
+Ohne Git-Integration entstehen kritische Risiken:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         OHNE GIT-INTEGRATION (GEFÄHRLICH!)                       │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  LLM generiert Code                                                             │
+│        │                                                                         │
+│        ▼                                                                         │
+│  ┌──────────────────┐      ┌────────────────────────────────────────────┐       │
+│  │ output_files     │─────>│ DATEISYSTEM                                │       │
+│  │ (DB JSONB Blob)  │      │                                            │       │
+│  └──────────────────┘      │ ⚠️ Überschreibt existierende Dateien!     │       │
+│                            │ ⚠️ Keine Merge-Conflicts erkannt!          │       │
+│                            │ ⚠️ Manuelle Arbeit geht verloren!          │       │
+│                            │ ⚠️ Kein Rollback möglich!                  │       │
+│                            └────────────────────────────────────────────┘       │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.2 Die Lösung: Session = Git-Branch
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         MIT GIT-INTEGRATION (SICHER!)                            │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  1. SESSION START                                                               │
+│     │                                                                            │
+│     ├─ git fetch origin main                                                    │
+│     ├─ git checkout -b feature/dev-session-{session_id}                         │
+│     └─ Session mit Branch verknüpfen                                           │
+│                                                                                  │
+│  2. ITERATIVER FEEDBACK-LOOP                                                    │
+│     │                                                                            │
+│     └─ Vorschläge werden NICHT ins Dateisystem geschrieben                      │
+│        (bleiben in der Datenbank als Entwurf)                                   │
+│                                                                                  │
+│  3. FREIGABE                                                                    │
+│     │                                                                            │
+│     ├─ git pull origin main (aktuelle Änderungen holen)                         │
+│     ├─ LLM generiert Code MIT Wissen über aktuelle Dateien                      │
+│     ├─ Code wird in Branch geschrieben                                          │
+│     ├─ git add . && git commit -m "feat(module): Beschreibung"                  │
+│     └─ git push origin feature/dev-session-{session_id}                         │
+│                                                                                  │
+│  4. REVIEW                                                                      │
+│     │                                                                            │
+│     ├─ Pull Request erstellen                                                   │
+│     ├─ Diff anzeigen (was wurde geändert?)                                      │
+│     ├─ Conflict-Detection                                                       │
+│     └─ Merge oder Reject                                                        │
+│                                                                                  │
+│  5. ROLLBACK (falls nötig)                                                      │
+│     │                                                                            │
+│     └─ git revert oder Branch löschen                                          │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 12.3 Datenmodell: Git-Verknüpfung
+
+```sql
+-- Erweiterung der development_sessions Tabelle
+ALTER TABLE development_sessions ADD COLUMN IF NOT EXISTS
+    git_branch VARCHAR(255);                 -- z.B. "feature/dev-session-abc123"
+
+ALTER TABLE development_sessions ADD COLUMN IF NOT EXISTS
+    git_base_commit VARCHAR(64);             -- Commit von dem gestartet wurde
+
+ALTER TABLE development_sessions ADD COLUMN IF NOT EXISTS
+    git_head_commit VARCHAR(64);             -- Aktueller HEAD nach Commits
+
+ALTER TABLE development_sessions ADD COLUMN IF NOT EXISTS
+    git_pr_url VARCHAR(500);                 -- URL zum Pull Request
+
+ALTER TABLE development_sessions ADD COLUMN IF NOT EXISTS
+    git_pr_status VARCHAR(20);               -- open, merged, closed
+
+-- Git-Commit-Log pro Session
+CREATE TABLE session_git_commits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES development_sessions(id) ON DELETE CASCADE,
+
+    commit_sha VARCHAR(64) NOT NULL,
+    commit_message TEXT NOT NULL,
+    files_changed JSONB DEFAULT '[]',        -- [{path, action: add|modify|delete}]
+
+    committed_at TIMESTAMP DEFAULT NOW(),
+    committed_by VARCHAR(100)
+);
+
+CREATE INDEX idx_session_commits ON session_git_commits(session_id);
+```
+
+### 12.4 Git-Service Implementation
+
+```python
+# services/git_integration_service.py
+
+class GitIntegrationService:
+    """
+    Verwaltet Git-Operationen für Development Sessions.
+    KRITISCH: Schützt vor Race Conditions und Datenverlust.
+    """
+
+    def __init__(self, repo_path: str):
+        self.repo_path = repo_path
+        self.repo = git.Repo(repo_path)
+
+    async def start_session_branch(
+        self,
+        session_id: str,
+        base_branch: str = "main"
+    ) -> str:
+        """
+        Erstellt einen neuen Branch für die Development Session.
+        """
+        branch_name = f"feature/dev-session-{session_id[:12]}"
+
+        # Aktuellen Stand holen
+        self.repo.remotes.origin.fetch()
+
+        # Von base_branch abzweigen
+        base = self.repo.refs[f"origin/{base_branch}"]
+        new_branch = self.repo.create_head(branch_name, base.commit)
+        new_branch.checkout()
+
+        return branch_name
+
+    async def read_current_file_state(
+        self,
+        file_paths: list[str]
+    ) -> dict[str, str]:
+        """
+        Liest den aktuellen Zustand von Dateien aus dem Repo.
+        WICHTIG: LLM bekommt diesen Kontext um Konflikte zu vermeiden.
+        """
+        current_state = {}
+        for path in file_paths:
+            full_path = os.path.join(self.repo_path, path)
+            if os.path.exists(full_path):
+                with open(full_path, 'r') as f:
+                    current_state[path] = f.read()
+            else:
+                current_state[path] = None  # Datei existiert nicht
+        return current_state
+
+    async def write_and_commit(
+        self,
+        session: DevelopmentSession,
+        files: list[GeneratedFile],
+        commit_message: str
+    ) -> str:
+        """
+        Schreibt generierte Dateien und erstellt Commit.
+        """
+        # 1. Sicherstellen dass wir auf dem richtigen Branch sind
+        self.repo.heads[session.git_branch].checkout()
+
+        # 2. Pull um Race Conditions zu vermeiden
+        self.repo.remotes.origin.pull()
+
+        # 3. Dateien schreiben
+        for file in files:
+            full_path = os.path.join(self.repo_path, file.path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, 'w') as f:
+                f.write(file.content)
+
+        # 4. Git add & commit
+        self.repo.index.add([f.path for f in files])
+        commit = self.repo.index.commit(commit_message)
+
+        return commit.hexsha
+
+    async def create_pull_request(
+        self,
+        session: DevelopmentSession,
+        title: str,
+        body: str
+    ) -> str:
+        """
+        Erstellt Pull Request via GitHub API.
+        """
+        # Push branch
+        self.repo.remotes.origin.push(session.git_branch)
+
+        # PR erstellen (via GitHub API)
+        pr = await self.github_client.create_pull_request(
+            head=session.git_branch,
+            base="main",
+            title=title,
+            body=body
+        )
+
+        return pr.html_url
+
+    async def detect_conflicts(
+        self,
+        session: DevelopmentSession
+    ) -> list[str]:
+        """
+        Prüft ob der Branch Merge-Konflikte mit main hat.
+        """
+        # Fetch latest main
+        self.repo.remotes.origin.fetch()
+
+        # Check for conflicts
+        try:
+            self.repo.git.merge("origin/main", no_commit=True, no_ff=True)
+            self.repo.git.merge("--abort")
+            return []  # Keine Konflikte
+        except git.GitCommandError as e:
+            self.repo.git.merge("--abort")
+            # Parse conflicting files from error
+            return self._parse_conflict_files(str(e))
+```
+
+### 12.5 Integration mit Context-Service
+
+```python
+class DevelopmentContextService:
+    async def build_context(self, session_id: str, ...) -> str:
+        # ... bisheriger Code ...
+
+        # NEU: Aktuellen Datei-Stand aus Git laden
+        if session.git_branch:
+            target_files = self._determine_target_files(session)
+            current_file_state = await self.git_service.read_current_file_state(
+                target_files
+            )
+
+            context_parts.append(self._format_current_files(current_file_state))
+
+    def _format_current_files(self, files: dict[str, str]) -> str:
+        text = "## Aktueller Datei-Stand (NICHT ÜBERSCHREIBEN OHNE GRUND!)\n\n"
+        for path, content in files.items():
+            if content:
+                text += f"### {path}\n```\n{content[:2000]}...\n```\n\n"
+            else:
+                text += f"### {path}\n*Datei existiert nicht (wird neu erstellt)*\n\n"
+        return text
+```
+
+---
+
+## 13. Dependency-Validation (Abhängigkeits-Prüfung)
+
+### 13.1 Das Problem: Halluzinierte Abhängigkeiten
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         PROBLEM: HALLUZINIERTE IMPORTS                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  LLM generiert:                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ from super_fancy_lib import magic_function  # Existiert nicht!           │   │
+│  │ import nonexistent_package                   # Nicht in requirements!    │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+│  Deployment:                                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ $ pip install -r requirements.txt                                        │   │
+│  │ $ python app.py                                                           │   │
+│  │ ModuleNotFoundError: No module named 'super_fancy_lib'  ❌                │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 Die Lösung: Rigorose Validierung
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         DEPENDENCY VALIDATION PIPELINE                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  LLM generiert Code                                                             │
+│        │                                                                         │
+│        ▼                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ 1. IMPORT EXTRACTION                                                      │   │
+│  │    AST-Parsing: Alle import/from statements extrahieren                  │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│        │                                                                         │
+│        ▼                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ 2. CATEGORIZATION                                                         │   │
+│  │    ├─ Standard Library (ok)                                              │   │
+│  │    ├─ Local Imports (prüfen ob Datei existiert)                          │   │
+│  │    └─ Third-Party (gegen package.json/requirements.txt prüfen)           │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│        │                                                                         │
+│        ▼                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ 3. VALIDATION                                                             │   │
+│  │    ├─ In requirements.txt/package.json?                                  │   │
+│  │    ├─ Version kompatibel?                                                 │   │
+│  │    └─ Existiert auf PyPI/npm?                                            │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│        │                                                                         │
+│        ▼                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────────────┐   │
+│  │ 4. RESULT                                                                 │   │
+│  │    ✓ Alle Abhängigkeiten validiert → Weiter                              │   │
+│  │    ✗ Fehlende Abhängigkeiten → LLM um Korrektur bitten                   │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.3 Datenmodell: Dependency Tracking
+
+```sql
+-- Bekannte Abhängigkeiten pro Modul (Whitelist)
+CREATE TABLE module_dependencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    module_id UUID REFERENCES module_registry(id) ON DELETE CASCADE,
+
+    -- Package-Info
+    package_name VARCHAR(255) NOT NULL,
+    package_type VARCHAR(20) NOT NULL,       -- python, npm, internal
+    version_constraint VARCHAR(100),         -- z.B. ">=1.0.0,<2.0.0"
+
+    -- Kategorisierung
+    is_optional BOOLEAN DEFAULT FALSE,
+    is_dev_only BOOLEAN DEFAULT FALSE,
+
+    -- Warum wird es gebraucht?
+    purpose TEXT,
+
+    added_at TIMESTAMP DEFAULT NOW(),
+    added_by VARCHAR(100),
+
+    UNIQUE(module_id, package_name, package_type)
+);
+
+-- Validierungs-Ergebnisse
+CREATE TABLE dependency_validations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES development_sessions(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES development_tasks(id),
+
+    -- Ergebnis
+    status VARCHAR(20) NOT NULL,             -- passed, failed, warning
+    imports_found JSONB DEFAULT '[]',        -- Alle gefundenen Imports
+    missing_packages JSONB DEFAULT '[]',     -- Fehlende Packages
+    version_conflicts JSONB DEFAULT '[]',    -- Versions-Konflikte
+    suggestions JSONB DEFAULT '[]',          -- Vorschläge zur Behebung
+
+    validated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 13.4 Dependency-Validator Implementation
+
+```python
+# services/dependency_validator.py
+
+import ast
+import sys
+from importlib.metadata import distributions
+import httpx
+
+class DependencyValidator:
+    """
+    Validiert Abhängigkeiten in generiertem Code.
+    """
+
+    # Standard Library Module (Python 3.11+)
+    STDLIB_MODULES = set(sys.stdlib_module_names)
+
+    def __init__(self, project_root: str):
+        self.project_root = project_root
+        self.requirements = self._load_requirements()
+        self.package_json = self._load_package_json()
+
+    async def validate_python_code(
+        self,
+        code: str,
+        file_path: str
+    ) -> ValidationResult:
+        """
+        Validiert Python-Code auf fehlende Abhängigkeiten.
+        """
+        # 1. Imports extrahieren via AST
+        imports = self._extract_python_imports(code)
+
+        # 2. Kategorisieren
+        categorized = self._categorize_imports(imports, file_path)
+
+        # 3. Third-Party gegen requirements.txt prüfen
+        missing = []
+        for pkg in categorized['third_party']:
+            if not self._is_in_requirements(pkg):
+                # Prüfen ob Package auf PyPI existiert
+                exists = await self._check_pypi(pkg)
+                missing.append({
+                    'package': pkg,
+                    'exists_on_pypi': exists,
+                    'suggestion': f"pip install {pkg}" if exists else "Package existiert nicht!"
+                })
+
+        # 4. Local Imports prüfen
+        invalid_local = []
+        for imp in categorized['local']:
+            if not self._local_module_exists(imp, file_path):
+                invalid_local.append({
+                    'import': imp,
+                    'suggestion': f"Modul {imp} muss erst erstellt werden"
+                })
+
+        return ValidationResult(
+            status='failed' if missing or invalid_local else 'passed',
+            missing_packages=missing,
+            invalid_local_imports=invalid_local,
+            all_imports=imports
+        )
+
+    def _extract_python_imports(self, code: str) -> list[str]:
+        """Extrahiert alle Imports aus Python-Code via AST."""
+        imports = []
+        try:
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        imports.append(alias.name.split('.')[0])
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        imports.append(node.module.split('.')[0])
+        except SyntaxError:
+            pass  # Code hat Syntax-Fehler, separat behandeln
+        return list(set(imports))
+
+    def _categorize_imports(
+        self,
+        imports: list[str],
+        file_path: str
+    ) -> dict:
+        """Kategorisiert Imports in stdlib, local, third-party."""
+        result = {
+            'stdlib': [],
+            'local': [],
+            'third_party': []
+        }
+
+        for imp in imports:
+            if imp in self.STDLIB_MODULES:
+                result['stdlib'].append(imp)
+            elif self._is_local_import(imp, file_path):
+                result['local'].append(imp)
+            else:
+                result['third_party'].append(imp)
+
+        return result
+
+    async def _check_pypi(self, package_name: str) -> bool:
+        """Prüft ob Package auf PyPI existiert."""
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    f"https://pypi.org/pypi/{package_name}/json",
+                    timeout=5.0
+                )
+                return response.status_code == 200
+            except:
+                return False
+
+    def _is_in_requirements(self, package: str) -> bool:
+        """Prüft ob Package in requirements.txt ist."""
+        return package.lower() in [
+            r.split('==')[0].split('>=')[0].split('<')[0].lower()
+            for r in self.requirements
+        ]
+```
+
+### 13.5 Integration in Development Pipeline
+
+```python
+class DevelopmentTaskExecutor:
+    async def execute_task(self, task: DevelopmentTask) -> TaskResult:
+        # ... Code generieren ...
+
+        # NEU: Dependency-Validation
+        for file in generated_files:
+            if file.path.endswith('.py'):
+                validation = await self.dep_validator.validate_python_code(
+                    file.content,
+                    file.path
+                )
+
+                if validation.status == 'failed':
+                    # LLM um Korrektur bitten
+                    correction_prompt = self._build_correction_prompt(
+                        file,
+                        validation
+                    )
+                    corrected = await self.llm_service.correct_code(
+                        file.content,
+                        correction_prompt
+                    )
+                    file.content = corrected
+
+            elif file.path.endswith(('.ts', '.js', '.tsx', '.jsx')):
+                validation = await self.dep_validator.validate_js_code(
+                    file.content,
+                    file.path
+                )
+                # ... analog ...
+
+        return TaskResult(files=generated_files, validations=validations)
+```
+
+### 13.6 UI: Dependency-Warnings
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         DEPENDENCY VALIDATION                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ⚠️ Abhängigkeits-Probleme gefunden:                                            │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ ❌ Fehlende Packages                                                    │    │
+│  ├─────────────────────────────────────────────────────────────────────────┤    │
+│  │                                                                          │    │
+│  │  1. pandas                                                              │    │
+│  │     └─ Existiert auf PyPI: ✓                                            │    │
+│  │     └─ Lösung: pip install pandas                                       │    │
+│  │     └─ [Zu requirements.txt hinzufügen]                                 │    │
+│  │                                                                          │    │
+│  │  2. super_fancy_lib                                                     │    │
+│  │     └─ Existiert auf PyPI: ✗                                            │    │
+│  │     └─ ⚠️ Package existiert nicht! LLM hat halluziniert.               │    │
+│  │     └─ [LLM um Korrektur bitten]                                        │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  [Alle beheben]  [Ignorieren (nicht empfohlen)]  [Abbrechen]                   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 14. Erweiterungen für die Zukunft
 
 1. **Semantische Suche im Memory** - pgvector für bessere Korrektur-Findung
 2. **Auto-Dokumentation** - Generierung von CHANGELOG und Docs
@@ -1268,3 +2070,5 @@ CREATE TABLE llm_routing_config (
 5. **Rollback** - Auf frühere Versionen zurückrollen
 6. **Weitere LLMs** - Mistral, Llama, DeepSeek als zusätzliche Optionen
 7. **Adaptive Routing** - Automatische LLM-Auswahl basierend auf Task-Komplexität
+8. **CI/CD-Integration** - Automatische Tests nach Merge
+9. **Security Scanning** - Automatische Prüfung auf Sicherheitslücken
