@@ -4,82 +4,101 @@
 
 Das Development-Modul ist ein **vollständig eigenständiges Package** innerhalb der FlowAudit-Plattform. Es hat keine harten Abhängigkeiten zu anderen Fachmodulen und kann unabhängig deployed werden.
 
-### 0.1 Package-Struktur
+### 0.1 Package-Struktur (konsistent mit bestehendem System)
+
+Das Development-Modul folgt **exakt dem gleichen Pattern** wie bestehende Module (Checklists, Documents, etc.):
 
 ```
 packages/
-├── common/                      # Shared utilities (bereits vorhanden)
-├── validation/                  # Validation-Modul (bereits vorhanden)
-├── checklists/                  # Checklists-Modul (bereits vorhanden)
-├── ...
+├── core/
+│   ├── common/                  # @flowaudit/common (vorhanden)
+│   └── validation/              # @flowaudit/validation (vorhanden)
 │
-└── development/                 # ◀ NEUES EIGENSTÄNDIGES MODUL
-    ├── package.json
-    ├── tsconfig.json
-    │
-    ├── src/
-    │   ├── index.ts             # Public API exports
-    │   │
-    │   ├── models/              # Datenmodelle
-    │   │   ├── development-session.ts
-    │   │   ├── development-iteration.ts
-    │   │   ├── development-file.ts
-    │   │   ├── module-registry.ts
-    │   │   └── user-profile.ts
-    │   │
-    │   ├── services/            # Business Logic
-    │   │   ├── session-service.ts
-    │   │   ├── iteration-service.ts
-    │   │   ├── context-service.ts
-    │   │   ├── multi-llm-service.ts
-    │   │   ├── git-integration-service.ts
-    │   │   └── dependency-validator.ts
-    │   │
-    │   ├── api/                 # REST API Endpoints
-    │   │   ├── sessions.ts
-    │   │   ├── iterations.ts
-    │   │   ├── files.ts
-    │   │   ├── modules.ts
-    │   │   └── user-profile.ts
-    │   │
-    │   └── types/               # TypeScript Interfaces
-    │       └── index.ts
-    │
-    └── tests/
-        └── ...
+├── domain/
+│   ├── checklists/              # @flowaudit/checklists (vorhanden)
+│   ├── group-queries/           # @flowaudit/group-queries (vorhanden)
+│   │
+│   └── development/             # ◀ @flowaudit/development (NEU)
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── tsup.config.ts
+│       └── src/
+│           └── index.ts         # Alle Exports (Types, Interfaces, Utils)
+│
+├── documents/
+│   └── document-box/            # @flowaudit/document-box (vorhanden)
+│
+└── adapters/
+    └── vue-adapter/             # @flowaudit/vue-adapter (vorhanden)
 
-apps/
-├── backend/
-│   └── app/
-│       └── modules/
-│           └── development/     # ◀ Backend-Integration
-│               ├── __init__.py
-│               ├── router.py    # FastAPI Router
-│               ├── models.py    # SQLAlchemy Models
-│               ├── schemas.py   # Pydantic Schemas
-│               └── services/
-│                   ├── session_service.py
-│                   ├── context_service.py
-│                   ├── multi_llm_service.py
-│                   ├── git_integration_service.py
-│                   └── dependency_validator.py
+
+apps/backend/app/
+├── api/
+│   ├── __init__.py              # Zentrale Router-Registrierung
+│   ├── auth.py                  # (vorhanden)
+│   ├── checklists.py            # (vorhanden)
+│   ├── document_box.py          # (vorhanden)
+│   ├── modules.py               # (vorhanden)
+│   │
+│   └── development.py           # ◀ NEU: Router mit prefix="/development"
 │
-└── frontend/
-    └── src/
-        └── modules/
-            └── development/     # ◀ Frontend-Integration
-                ├── views/
-                │   ├── DevelopmentDashboard.vue
-                │   ├── SessionWizard.vue
-                │   ├── FeedbackLoop.vue
-                │   └── ModuleFlowDiagram.vue
-                ├── components/
-                │   ├── FileUploader.vue
-                │   ├── IterationPanel.vue
-                │   ├── ProposalView.vue
-                │   └── UserProfileSettings.vue
-                └── stores/
-                    └── development.ts
+├── models/
+│   ├── audit_case.py            # (vorhanden)
+│   ├── module_converter.py      # (vorhanden)
+│   │
+│   └── development.py           # ◀ NEU: SQLAlchemy Models
+│
+├── schemas/
+│   ├── checklist.py             # (vorhanden)
+│   │
+│   └── development.py           # ◀ NEU: Pydantic Schemas
+│
+└── services/
+    ├── module_service.py        # (vorhanden)
+    ├── github_service.py        # (vorhanden)
+    │
+    └── development/             # ◀ NEU: Development-Services
+        ├── __init__.py
+        ├── session_service.py
+        ├── context_service.py
+        ├── multi_llm_service.py
+        ├── git_integration_service.py
+        └── dependency_validator.py
+
+
+apps/frontend/src/
+├── views/
+│   ├── AuditCasesView.vue       # (vorhanden)
+│   ├── ModuleConverterView.vue  # (vorhanden)
+│   │
+│   └── DevelopmentView.vue      # ◀ NEU: Haupt-View
+│
+├── components/
+│   ├── checklists/              # (vorhanden)
+│   ├── documents/               # (vorhanden)
+│   ├── module-converter/        # (vorhanden)
+│   │
+│   └── development/             # ◀ NEU: Development-Komponenten
+│       ├── DevelopmentDashboard.vue
+│       ├── SessionWizard.vue
+│       ├── FeedbackLoop.vue
+│       ├── ModuleFlowDiagram.vue
+│       ├── FileUploader.vue
+│       ├── IterationPanel.vue
+│       ├── ProposalView.vue
+│       └── UserProfileSettings.vue
+│
+├── api/
+│   ├── checklists.ts            # (vorhanden)
+│   ├── moduleConverter.ts       # (vorhanden)
+│   │
+│   └── development.ts           # ◀ NEU: API-Client
+│
+└── stores/
+    ├── auth.ts                  # (vorhanden)
+    ├── moduleConverter.ts       # (vorhanden)
+    │
+    └── development.ts           # ◀ NEU: Pinia Store
 ```
 
 ### 0.2 Abhängigkeiten
@@ -164,34 +183,95 @@ CREATE INDEX idx_dev_embeddings_entity
 | **Skalierung** | Mit PostgreSQL | Eigene Skalierung |
 | **Latenz** | Direkt in DB-Queries | Netzwerk-Overhead |
 
-### 0.4 Modul-Registrierung
+### 0.4 Modul-Registrierung (konsistent mit bestehendem Pattern)
+
+Die Integration folgt dem **bestehenden Pattern** aus `app/api/__init__.py`:
 
 ```python
-# apps/backend/app/modules/development/__init__.py
+# apps/backend/app/api/development.py
 
-from fastapi import APIRouter
-from app.core.module_registry import register_module
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/api/v1/development", tags=["development"])
-
-# Sub-Router importieren
-from .api import sessions, iterations, files, modules, user_profile
-
-router.include_router(sessions.router)
-router.include_router(iterations.router)
-router.include_router(files.router)
-router.include_router(modules.router)
-router.include_router(user_profile.router)
-
-# Modul registrieren
-register_module(
-    name="development",
-    display_name="Development-Modul",
-    version="1.0.0",
-    router=router,
-    required_roles=["developer", "admin"],  # Rollenbasierter Zugriff
-    is_standalone=True,  # Eigenständig, keine Abhängigkeiten
+from app.core.database import get_db
+from app.core.auth import get_current_user, require_roles
+from app.schemas.development import (
+    DevelopmentSessionCreate,
+    DevelopmentSessionResponse,
+    DevelopmentIterationCreate,
+    # ...
 )
+from app.services.development import (
+    SessionService,
+    IterationService,
+    ContextService,
+)
+
+router = APIRouter(prefix="/development", tags=["Development"])
+
+# Rollenbasierter Zugriff für alle Endpoints
+REQUIRED_ROLES = ["developer", "admin"]
+
+
+@router.get("/sessions", response_model=list[DevelopmentSessionResponse])
+async def list_sessions(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(require_roles(REQUIRED_ROLES)),
+):
+    """Liste aller Development-Sessions des Users."""
+    service = SessionService(db)
+    return await service.list_sessions(current_user.tenant_id, current_user.id)
+
+
+@router.post("/sessions", response_model=DevelopmentSessionResponse)
+async def create_session(
+    data: DevelopmentSessionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(require_roles(REQUIRED_ROLES)),
+):
+    """Neue Development-Session starten."""
+    service = SessionService(db)
+    return await service.create_session(data, current_user)
+
+# ... weitere Endpoints
+```
+
+```python
+# apps/backend/app/api/__init__.py (Ergänzung)
+
+from app.api.development import router as development_router
+
+# Bestehende Router...
+router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+router.include_router(checklists_router, tags=["Checklists"])
+# ...
+
+# NEU: Development-Router
+router.include_router(development_router, tags=["Development"])
+```
+
+```typescript
+// apps/frontend/src/router/index.ts (Ergänzung)
+
+import DevelopmentView from '@/views/DevelopmentView.vue'
+
+const routes = [
+  // ... bestehende Routen
+  {
+    path: '/',
+    component: DefaultLayout,
+    meta: { requiresAuth: true },
+    children: [
+      // ... bestehende Children
+      {
+        path: 'development',
+        name: 'development',
+        component: DevelopmentView,
+        meta: { requiredRoles: ['developer', 'admin'] }  // Rollenprüfung
+      }
+    ]
+  }
+]
 ```
 
 ---
@@ -362,7 +442,7 @@ Das User-Profil ist als **eigene Registerkarte** in den Benutzereinstellungen si
 ### Rollenbasierter Zugriff
 
 ```python
-# frontend/src/modules/development/components/UserProfileSettings.vue
+# apps/frontend/src/components/development/UserProfileSettings.vue
 
 # Die Registerkarte wird nur angezeigt wenn:
 # 1. User hat Rolle "developer" ODER "admin"
@@ -2383,7 +2463,710 @@ class DevelopmentTaskExecutor:
 
 ---
 
-## 14. Erweiterungen für die Zukunft
+## 14. Kontinuierliche Architektur-Überwachung & Vector-Sync
+
+**Kernprinzip:** Das Development-Modul muss jederzeit ein aktuelles Abbild der gesamten Codebasis in pgvector haben, um konsistente und architektur-konforme Vorschläge zu machen.
+
+### 14.1 Architektur-Scanner Service
+
+```python
+# apps/backend/app/services/development/architecture_scanner.py
+
+from typing import AsyncGenerator
+import asyncio
+from datetime import datetime, timedelta
+from pathlib import Path
+
+class ArchitectureScanner:
+    """
+    Kontinuierlicher Scanner, der die Codebasis überwacht
+    und Änderungen in pgvector synchronisiert.
+    """
+
+    SCAN_INTERVAL_SECONDS = 300  # Alle 5 Minuten
+
+    async def start_background_sync(self) -> None:
+        """Startet den Background-Sync-Job."""
+        while True:
+            try:
+                await self.full_sync_cycle()
+            except Exception as e:
+                logger.error(f"Sync cycle failed: {e}")
+            await asyncio.sleep(self.SCAN_INTERVAL_SECONDS)
+
+    async def full_sync_cycle(self) -> dict:
+        """Führt einen vollständigen Sync-Zyklus durch."""
+        stats = {
+            "files_scanned": 0,
+            "files_updated": 0,
+            "embeddings_created": 0,
+            "duration_ms": 0
+        }
+
+        start_time = datetime.now()
+
+        # 1. Git-Status prüfen
+        git_changes = await self.detect_git_changes()
+
+        # 2. Datei-Hashes vergleichen
+        changed_files = await self.find_changed_files(git_changes)
+
+        # 3. Für geänderte Dateien: Embeddings neu erstellen
+        for file_path in changed_files:
+            await self.update_file_embeddings(file_path)
+            stats["files_updated"] += 1
+
+        # 4. Architektur-Metadaten extrahieren
+        await self.update_architecture_metadata()
+
+        # 5. Abhängigkeits-Graph aktualisieren
+        await self.update_dependency_graph()
+
+        stats["duration_ms"] = (datetime.now() - start_time).total_seconds() * 1000
+        return stats
+
+    async def detect_git_changes(self) -> list[str]:
+        """Erkennt Änderungen seit letztem Sync via Git."""
+        last_sync_commit = await self.get_last_sync_commit()
+        result = await run_command(
+            f"git diff --name-only {last_sync_commit} HEAD"
+        )
+        return result.stdout.strip().split('\n')
+
+    async def update_file_embeddings(self, file_path: Path) -> None:
+        """Aktualisiert Embeddings für eine einzelne Datei."""
+        content = file_path.read_text()
+
+        # Verschiedene Embedding-Typen
+        embeddings_to_create = [
+            # Gesamtdatei-Embedding
+            {
+                "entity_type": "file",
+                "content": self.prepare_file_content(content),
+            },
+            # Funktions-Embeddings
+            *self.extract_function_embeddings(content, file_path),
+            # Klassen-Embeddings
+            *self.extract_class_embeddings(content, file_path),
+            # Import-Embeddings (für Abhängigkeits-Suche)
+            *self.extract_import_embeddings(content, file_path),
+        ]
+
+        # Alte Embeddings löschen
+        await self.delete_file_embeddings(file_path)
+
+        # Neue Embeddings erstellen
+        for emb in embeddings_to_create:
+            vector = await self.create_embedding(emb["content"])
+            await self.store_embedding(
+                entity_type=emb["entity_type"],
+                entity_id=str(file_path),
+                content=emb["content"],
+                embedding=vector,
+                metadata=emb.get("metadata", {})
+            )
+```
+
+### 14.2 Event-basierte Echtzeit-Updates
+
+```python
+# apps/backend/app/services/development/file_watcher.py
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+class CodebaseWatcher(FileSystemEventHandler):
+    """
+    Überwacht das Dateisystem auf Änderungen und
+    triggert sofortige Vector-Updates.
+    """
+
+    WATCH_PATTERNS = [
+        "**/*.py", "**/*.ts", "**/*.tsx", "**/*.vue",
+        "**/*.js", "**/*.jsx", "**/*.sql", "**/*.yaml"
+    ]
+
+    IGNORE_PATTERNS = [
+        "**/node_modules/**", "**/__pycache__/**",
+        "**/.git/**", "**/dist/**", "**/build/**"
+    ]
+
+    async def on_modified(self, event):
+        if self.should_process(event.src_path):
+            await self.queue_for_embedding(event.src_path)
+
+    async def on_created(self, event):
+        if self.should_process(event.src_path):
+            await self.queue_for_embedding(event.src_path)
+
+    async def on_deleted(self, event):
+        if self.should_process(event.src_path):
+            await self.remove_embeddings(event.src_path)
+```
+
+### 14.3 Architektur-Metadaten in pgvector
+
+```sql
+-- Erweiterung der Embedding-Tabelle für Architektur-Infos
+
+-- Modul-Struktur-Embeddings
+INSERT INTO development_embeddings (
+    entity_type, entity_id, content_text, embedding, metadata
+)
+VALUES (
+    'module_structure',
+    'packages/domain/checklists',
+    'Checklists module provides audit checklist management...',
+    '[0.1, 0.2, ...]'::vector,
+    '{
+        "module_name": "@flowaudit/checklists",
+        "module_type": "domain",
+        "dependencies": ["@flowaudit/core", "@flowaudit/db"],
+        "exports": ["ChecklistService", "ChecklistModel"],
+        "file_count": 24,
+        "loc": 3500
+    }'::jsonb
+);
+
+-- API-Endpoint-Embeddings
+INSERT INTO development_embeddings (
+    entity_type, entity_id, content_text, embedding, metadata
+)
+VALUES (
+    'api_endpoint',
+    'POST /api/v1/checklists',
+    'Creates a new audit checklist with items...',
+    '[0.1, 0.2, ...]'::vector,
+    '{
+        "method": "POST",
+        "path": "/api/v1/checklists",
+        "request_schema": "ChecklistCreate",
+        "response_schema": "ChecklistResponse",
+        "auth_required": true,
+        "roles": ["auditor", "admin"]
+    }'::jsonb
+);
+
+-- Datenbank-Schema-Embeddings
+INSERT INTO development_embeddings (
+    entity_type, entity_id, content_text, embedding, metadata
+)
+VALUES (
+    'db_table',
+    'checklists',
+    'Checklists table stores audit checklist definitions...',
+    '[0.1, 0.2, ...]'::vector,
+    '{
+        "table_name": "checklists",
+        "columns": ["id", "tenant_id", "name", "status"],
+        "foreign_keys": [{"column": "tenant_id", "references": "tenants.id"}],
+        "indexes": ["idx_checklists_tenant", "idx_checklists_status"]
+    }'::jsonb
+);
+```
+
+### 14.4 Konsistenz-Prüfung vor LLM-Vorschlägen
+
+```python
+# apps/backend/app/services/development/consistency_checker.py
+
+class ConsistencyChecker:
+    """
+    Prüft LLM-Vorschläge gegen die aktuelle Architektur in pgvector.
+    """
+
+    async def validate_proposal(
+        self,
+        proposal: DevelopmentProposal
+    ) -> ValidationResult:
+        """Validiert einen LLM-Vorschlag gegen die Codebasis."""
+
+        issues = []
+
+        # 1. Datei-Pfade prüfen
+        for file_change in proposal.file_changes:
+            if not await self.is_valid_path(file_change.path):
+                issues.append(ValidationIssue(
+                    severity="error",
+                    message=f"Path {file_change.path} does not match project structure",
+                    suggestion=await self.suggest_correct_path(file_change.path)
+                ))
+
+        # 2. Import-Pfade prüfen
+        for import_stmt in self.extract_imports(proposal):
+            if not await self.is_valid_import(import_stmt):
+                issues.append(ValidationIssue(
+                    severity="error",
+                    message=f"Import {import_stmt} does not exist",
+                    suggestion=await self.find_similar_import(import_stmt)
+                ))
+
+        # 3. API-Konsistenz prüfen
+        for api_change in proposal.api_changes:
+            existing = await self.find_similar_endpoints(api_change)
+            if existing and not self.is_consistent(api_change, existing):
+                issues.append(ValidationIssue(
+                    severity="warning",
+                    message=f"API pattern inconsistent with existing endpoints",
+                    existing_patterns=existing
+                ))
+
+        # 4. Namenskonventionen prüfen
+        naming_issues = await self.check_naming_conventions(proposal)
+        issues.extend(naming_issues)
+
+        return ValidationResult(
+            valid=len([i for i in issues if i.severity == "error"]) == 0,
+            issues=issues
+        )
+
+    async def suggest_correct_path(self, invalid_path: str) -> str:
+        """Findet den korrekten Pfad via Vector-Ähnlichkeitssuche."""
+
+        # Suche ähnliche existierende Pfade in pgvector
+        similar = await self.db.execute("""
+            SELECT entity_id, 1 - (embedding <=> $1) as similarity
+            FROM development_embeddings
+            WHERE entity_type = 'file'
+            ORDER BY embedding <=> $1
+            LIMIT 5
+        """, [self.embed(invalid_path)])
+
+        return self.find_best_match(invalid_path, similar)
+```
+
+### 14.5 Sync-Status Dashboard
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  📊 ARCHITEKTUR-SYNC STATUS                                            [Admin] │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Letzter Full-Sync: vor 2 Minuten                    Status: ✅ Aktuell         │
+│  Nächster Scan: in 3 Minuten                                                    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ EMBEDDING-STATISTIKEN                                                   │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │ Dateien indexiert:        1,247                                         │    │
+│  │ Funktionen/Klassen:       8,934                                         │    │
+│  │ API-Endpoints:             156                                          │    │
+│  │ DB-Tabellen:                42                                          │    │
+│  │ Module:                     12                                          │    │
+│  │                                                                          │    │
+│  │ Gesamt-Embeddings:       10,391                                         │    │
+│  │ Vector-DB Größe:          124 MB                                        │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ LETZTE ÄNDERUNGEN                                                       │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │ • apps/backend/app/api/checklists.py      vor 5 min    ✅ Synced       │    │
+│  │ • apps/frontend/src/views/Dashboard.vue   vor 12 min   ✅ Synced       │    │
+│  │ • packages/domain/core/src/utils.ts       vor 1 Std    ✅ Synced       │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  [🔄 Manueller Full-Sync]  [📋 Sync-Log anzeigen]  [⚙️ Einstellungen]          │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 15. Modul-Zuweisung an Konzerne & Abrechnung
+
+**Kernkonzept:** Module können flexibel an Konzerne, Organisationen und Tenants zugewiesen werden. Diese Zuweisung dient sowohl der Zugriffskontrolle als auch der Grundlage für die Abrechnung.
+
+### 15.1 Hierarchie-basierte Modul-Lizenzierung
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           MODUL-LIZENZ-HIERARCHIE                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  KONZERN-EBENE (Enterprise License)                                             │
+│  ├── Lizenz für: @flowaudit/checklists (Premium)                               │
+│  ├── Lizenz für: @flowaudit/development (Enterprise)                           │
+│  ├── Max. Organisationen: 10                                                    │
+│  └── Max. User gesamt: 500                                                      │
+│       │                                                                          │
+│       ├── ORGANISATION A                                                        │
+│       │    ├── Erbt: @flowaudit/checklists                                     │
+│       │    ├── Zusatz-Lizenz: @flowaudit/reporting                             │
+│       │    └── Max. User: 100                                                   │
+│       │         │                                                                │
+│       │         ├── TENANT A1 (Nutzt: checklists, reporting)                   │
+│       │         └── TENANT A2 (Nutzt: nur checklists)                          │
+│       │                                                                          │
+│       └── ORGANISATION B                                                        │
+│            ├── Erbt: @flowaudit/checklists                                     │
+│            ├── Kein reporting (nicht lizenziert)                               │
+│            └── Max. User: 50                                                    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.2 Datenmodell für Modul-Lizenzen
+
+```python
+# apps/backend/app/models/licensing.py
+
+class ModuleLicense(TenantModel):
+    """Lizenzierung von Modulen auf verschiedenen Ebenen."""
+
+    __tablename__ = "module_licenses"
+
+    # Lizenz-Geltungsbereich (nur eins davon gesetzt)
+    konzern_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("konzerne.id", ondelete="CASCADE"),
+        nullable=True
+    )
+    organization_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True
+    )
+    tenant_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=True
+    )
+
+    # Modul-Informationen
+    module_package_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    module_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Lizenz-Details
+    license_type: Mapped[str] = mapped_column(
+        Enum("trial", "basic", "professional", "enterprise"),
+        default="basic",
+        nullable=False
+    )
+
+    # Zeitliche Gültigkeit
+    valid_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.now
+    )
+    valid_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True  # None = unbegrenzt
+    )
+
+    # Nutzungslimits
+    max_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_api_calls_per_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Abrechnungs-Referenz
+    billing_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    __table_args__ = (
+        # Eindeutigkeit: Ein Modul pro Scope
+        UniqueConstraint(
+            'konzern_id', 'organization_id', 'tenant_id', 'module_package_name',
+            name='uq_module_license_scope'
+        ),
+    )
+
+
+class ModuleUsageLog(Base, TimestampMixin):
+    """Protokollierung der Modul-Nutzung für Abrechnung."""
+
+    __tablename__ = "module_usage_logs"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid4())
+    )
+
+    # Wer nutzt
+    tenant_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Was wird genutzt
+    module_package_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Metriken für Abrechnung
+    api_calls: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    compute_time_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Abrechnungsperiode
+    billing_period: Mapped[str] = mapped_column(String(7), nullable=False)  # "2024-01"
+
+    # Zusätzliche Details
+    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+```
+
+### 15.3 Lizenz-Prüfung Service
+
+```python
+# apps/backend/app/services/licensing_service.py
+
+class LicensingService:
+    """Service zur Prüfung und Verwaltung von Modul-Lizenzen."""
+
+    async def check_module_access(
+        self,
+        tenant_id: str,
+        module_name: str,
+        user_id: str | None = None
+    ) -> LicenseCheckResult:
+        """
+        Prüft, ob ein Tenant Zugriff auf ein Modul hat.
+        Berücksichtigt Vererbung von Konzern/Organisation.
+        """
+
+        # Hole Hierarchie-Pfad
+        hierarchy = await self.get_tenant_hierarchy(tenant_id)
+        # hierarchy = {"tenant": {...}, "organization": {...}, "konzern": {...}}
+
+        # Prüfe Lizenzen von unten nach oben (Tenant → Org → Konzern)
+        license = None
+
+        # 1. Direkte Tenant-Lizenz?
+        license = await self.find_license(
+            module_name=module_name,
+            tenant_id=tenant_id
+        )
+
+        # 2. Organisations-Lizenz?
+        if not license and hierarchy.get("organization"):
+            license = await self.find_license(
+                module_name=module_name,
+                organization_id=hierarchy["organization"]["id"]
+            )
+
+        # 3. Konzern-Lizenz?
+        if not license and hierarchy.get("konzern"):
+            license = await self.find_license(
+                module_name=module_name,
+                konzern_id=hierarchy["konzern"]["id"]
+            )
+
+        if not license:
+            return LicenseCheckResult(
+                allowed=False,
+                reason="Keine gültige Lizenz gefunden"
+            )
+
+        # Prüfe Gültigkeit
+        now = datetime.now(timezone.utc)
+        if license.valid_until and license.valid_until < now:
+            return LicenseCheckResult(
+                allowed=False,
+                reason="Lizenz abgelaufen",
+                expired_at=license.valid_until
+            )
+
+        # Prüfe User-Limit
+        if license.max_users:
+            current_users = await self.count_module_users(tenant_id, module_name)
+            if current_users >= license.max_users:
+                return LicenseCheckResult(
+                    allowed=False,
+                    reason=f"Benutzer-Limit erreicht ({license.max_users})"
+                )
+
+        return LicenseCheckResult(
+            allowed=True,
+            license_type=license.license_type,
+            valid_until=license.valid_until
+        )
+
+    async def log_usage(
+        self,
+        tenant_id: str,
+        user_id: str,
+        module_name: str,
+        action: str,
+        metrics: UsageMetrics
+    ) -> None:
+        """Protokolliert Modul-Nutzung für Abrechnung."""
+
+        billing_period = datetime.now().strftime("%Y-%m")
+
+        log = ModuleUsageLog(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            module_package_name=module_name,
+            action_type=action,
+            api_calls=metrics.api_calls,
+            tokens_used=metrics.tokens_used,
+            compute_time_ms=metrics.compute_time_ms,
+            billing_period=billing_period
+        )
+
+        await self.db.add(log)
+        await self.db.commit()
+```
+
+### 15.4 Abrechnungs-Aggregation
+
+```python
+# apps/backend/app/services/billing_service.py
+
+class BillingService:
+    """Aggregiert Nutzungsdaten für die Abrechnung."""
+
+    async def generate_billing_report(
+        self,
+        konzern_id: str,
+        period: str  # "2024-01"
+    ) -> BillingReport:
+        """Erstellt Abrechnungsbericht für einen Konzern."""
+
+        # Alle Organisationen und Tenants unter diesem Konzern
+        hierarchy = await self.get_full_hierarchy(konzern_id)
+
+        report = BillingReport(
+            konzern_id=konzern_id,
+            period=period,
+            organizations=[]
+        )
+
+        for org in hierarchy["organizations"]:
+            org_usage = await self.aggregate_organization_usage(org["id"], period)
+
+            org_report = OrganizationBillingReport(
+                organization_id=org["id"],
+                organization_name=org["name"],
+                tenants=[],
+                totals=UsageTotals()
+            )
+
+            for tenant in org["tenants"]:
+                tenant_usage = await self.aggregate_tenant_usage(tenant["id"], period)
+                org_report.tenants.append(tenant_usage)
+                org_report.totals += tenant_usage.totals
+
+            report.organizations.append(org_report)
+
+        # Berechne Kosten basierend auf Nutzung
+        report.calculated_costs = await self.calculate_costs(report)
+
+        return report
+
+    async def aggregate_tenant_usage(
+        self,
+        tenant_id: str,
+        period: str
+    ) -> TenantUsageReport:
+        """Aggregiert Nutzung pro Tenant und Modul."""
+
+        usage = await self.db.execute("""
+            SELECT
+                module_package_name,
+                COUNT(*) as total_actions,
+                SUM(api_calls) as total_api_calls,
+                SUM(tokens_used) as total_tokens,
+                SUM(compute_time_ms) as total_compute_ms,
+                COUNT(DISTINCT user_id) as unique_users
+            FROM module_usage_logs
+            WHERE tenant_id = $1
+              AND billing_period = $2
+            GROUP BY module_package_name
+        """, [tenant_id, period])
+
+        return TenantUsageReport(
+            tenant_id=tenant_id,
+            modules=usage.fetchall()
+        )
+```
+
+### 15.5 Admin-UI für Modul-Zuweisung
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  🏢 MODUL-ZUWEISUNG                                            [Konzern-Admin] │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  Konzern: Muster AG                                                             │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ LIZENZIERTE MODULE (Konzern-Ebene)                                      │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │                                                                          │    │
+│  │ ☑️  @flowaudit/core              Enterprise  │ Unbegrenzt │ 500 User   │    │
+│  │ ☑️  @flowaudit/checklists        Professional│ 31.12.2025 │ 500 User   │    │
+│  │ ☑️  @flowaudit/development       Enterprise  │ Unbegrenzt │ 50 User    │    │
+│  │ ☐  @flowaudit/reporting          ────────────│────────────│──────────   │    │
+│  │ ☐  @flowaudit/documents          ────────────│────────────│──────────   │    │
+│  │                                                                          │    │
+│  │ [+ Modul hinzufügen]                                                    │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ ORGANISATIONS-ÜBERSICHT                                                 │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │                                                                          │    │
+│  │ ▼ Organisation: Muster GmbH Berlin                                      │    │
+│  │   │ Zusatz-Module: @flowaudit/reporting (Professional, 100 User)       │    │
+│  │   │                                                                      │    │
+│  │   ├── Tenant: Muster Berlin Haupt                                       │    │
+│  │   │   └─ Nutzt: core, checklists, reporting │ 45 User aktiv            │    │
+│  │   │                                                                      │    │
+│  │   └── Tenant: Muster Berlin Filiale                                     │    │
+│  │       └─ Nutzt: core, checklists            │ 12 User aktiv            │    │
+│  │                                                                          │    │
+│  │ ▶ Organisation: Muster GmbH München                                     │    │
+│  │   └─ Keine Zusatz-Module                                                │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ NUTZUNGS-ÜBERSICHT (Aktueller Monat)                                   │    │
+│  │ ─────────────────────────────────────────────────────────────          │    │
+│  │                                                                          │    │
+│  │ @flowaudit/checklists:     12,450 API-Calls │   892,000 Tokens         │    │
+│  │ @flowaudit/development:     1,230 API-Calls │ 2,340,000 Tokens         │    │
+│  │ @flowaudit/reporting:       3,200 API-Calls │   450,000 Tokens         │    │
+│  │                                                                          │    │
+│  │ [📊 Detaillierter Bericht]  [📥 Export CSV]                            │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.6 API-Endpoints für Lizenzierung
+
+```
+# Lizenz-Verwaltung (Admin)
+GET  /api/v1/licenses                         → Alle Lizenzen auflisten
+POST /api/v1/licenses                         → Neue Lizenz erstellen
+GET  /api/v1/licenses/{id}                    → Lizenz-Details
+PUT  /api/v1/licenses/{id}                    → Lizenz aktualisieren
+DELETE /api/v1/licenses/{id}                  → Lizenz entfernen
+
+# Zugriffsprüfung
+GET  /api/v1/licenses/check/{module_name}     → Prüft Zugriff für aktuellen User/Tenant
+
+# Nutzungsberichte
+GET  /api/v1/billing/usage                    → Eigene Nutzung
+GET  /api/v1/billing/usage/organization/{id}  → Organisations-Nutzung (Org-Admin)
+GET  /api/v1/billing/usage/konzern/{id}       → Konzern-Nutzung (Konzern-Admin)
+GET  /api/v1/billing/report/{period}          → Abrechnungsbericht für Periode
+POST /api/v1/billing/export                   → Export als CSV/PDF
+```
+
+---
+
+## 16. Erweiterungen für die Zukunft
 
 1. **Semantische Suche im Memory** - pgvector für bessere Korrektur-Findung
 2. **Auto-Dokumentation** - Generierung von CHANGELOG und Docs
