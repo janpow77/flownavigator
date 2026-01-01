@@ -1369,3 +1369,544 @@ Legende: ✅ Implementiert | ⚠️ Teilweise | ❌ Fehlt
 | Template-Hierarchie | 1-2 Wochen | - |
 | Benutzer-Verwaltung UI | 1-2 Wochen | - |
 | **Gesamt** | **9-14 Wochen** | |
+
+---
+
+## Umsetzungsplan: Layer-System & Dashboard
+
+### Phase 1: Backend-Grundlagen (2-3 Wochen)
+
+#### 1.1 Datenbank-Modelle erstellen
+
+**Schritt 1: Vendor-Layer Modelle** (`apps/backend/app/models/vendor.py`)
+```python
+# Neue Datei erstellen mit:
+# - Vendor (Softwarefirma)
+# - VendorUser (Mitarbeiter)
+# - VendorSettings (globale Einstellungen)
+```
+
+**Schritt 2: Customer & Lizenz-Modelle** (`apps/backend/app/models/customer.py`)
+```python
+# Neue Datei erstellen mit:
+# - Customer (Kunde mit Lizenzvertrag)
+# - LicenseUsage (Tracking)
+# - LicenseAlert (Warnungen)
+```
+
+**Schritt 3: Profil-Modelle** (`apps/backend/app/models/profile.py`)
+```python
+# Neue Datei erstellen mit:
+# - CoordinationBodyProfile
+# - AuthorityProfile
+# - Address (embedded)
+```
+
+**Schritt 4: User-Modell erweitern** (`apps/backend/app/models/user.py`)
+```python
+# Bestehende Datei erweitern um:
+# - title, phone, mobile, office_location
+# - signature_title, signature_department
+# - password_changed_at, must_change_password
+```
+
+#### 1.2 Alembic-Migrationen
+
+```bash
+# Migrationen erstellen und ausführen:
+alembic revision --autogenerate -m "add_vendor_layer"
+alembic revision --autogenerate -m "add_customer_licensing"
+alembic revision --autogenerate -m "add_profiles"
+alembic revision --autogenerate -m "extend_user"
+alembic upgrade head
+```
+
+#### 1.3 Pydantic Schemas
+
+**Neue Schemas** (`apps/backend/app/schemas/`)
+```
+schemas/
+├── vendor.py          # VendorCreate, VendorResponse, VendorUserCreate...
+├── customer.py        # CustomerCreate, CustomerResponse, LicenseUsageResponse...
+├── profile.py         # CoordinationBodyProfileCreate, AuthorityProfileCreate...
+└── dashboard.py       # LayerDashboardData, CustomerSummary, AuthoritySummary...
+```
+
+---
+
+### Phase 2: Backend-API (2 Wochen)
+
+#### 2.1 Vendor-API (`apps/backend/app/api/vendor.py`)
+
+```python
+# Endpoints:
+# GET  /api/vendor                    - Vendor-Info abrufen
+# PUT  /api/vendor                    - Vendor-Info aktualisieren
+# GET  /api/vendor/users              - Vendor-Mitarbeiter auflisten
+# POST /api/vendor/users              - Vendor-Mitarbeiter anlegen
+# GET  /api/vendor/settings           - Globale Einstellungen
+# PUT  /api/vendor/settings           - Einstellungen aktualisieren
+```
+
+#### 2.2 Customers-API (`apps/backend/app/api/customers.py`)
+
+```python
+# Endpoints:
+# GET    /api/customers               - Alle Kunden auflisten
+# POST   /api/customers               - Neuen Kunden anlegen
+# GET    /api/customers/{id}          - Kunden-Details
+# PUT    /api/customers/{id}          - Kunden aktualisieren
+# DELETE /api/customers/{id}          - Kunden deaktivieren
+# GET    /api/customers/{id}/licenses - Lizenz-Historie
+# PUT    /api/customers/{id}/licenses - Lizenzen anpassen
+```
+
+#### 2.3 Layer-Dashboard-API (`apps/backend/app/api/dashboard.py`)
+
+```python
+# Endpoints:
+# GET /api/dashboard/layers           - Gesamte Layer-Hierarchie
+# GET /api/dashboard/layers/{cb_id}   - Coordination Body Details
+# GET /api/dashboard/layers/{cb_id}/authorities/{auth_id}  - Behörden-Details
+# GET /api/dashboard/stats            - Globale Statistiken
+```
+
+**Beispiel-Response für `/api/dashboard/layers`:**
+```json
+{
+  "vendor": {
+    "name": "FlowAudit GmbH",
+    "stats": {
+      "total_customers": 12,
+      "total_licenses": 847,
+      "used_licenses": 723,
+      "active_modules": 8,
+      "current_version": "2.4.1",
+      "open_support_tickets": 5
+    }
+  },
+  "customers": [
+    {
+      "id": "uuid...",
+      "name": "EU-Prüfungskoordination",
+      "licensed_users": 50,
+      "active_users": 43,
+      "license_usage_percent": 86.0,
+      "authority_count": 3,
+      "max_authorities": 5,
+      "status": "active",
+      "authorities": [
+        {
+          "id": "uuid...",
+          "name": "Bundesrechnungshof",
+          "short_name": "BRH",
+          "user_count": 15,
+          "active_cases": 45,
+          "authority_head": "Sabine Meier"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### 2.4 Profile-API (`apps/backend/app/api/profiles.py`)
+
+```python
+# Endpoints:
+# GET  /api/tenants/{id}/profile      - Profil abrufen
+# PUT  /api/tenants/{id}/profile      - Profil aktualisieren
+# POST /api/tenants/{id}/profile/logo - Logo hochladen
+```
+
+---
+
+### Phase 3: Frontend Layer-Dashboard (2-3 Wochen)
+
+#### 3.1 Vue-Komponenten-Struktur
+
+```
+apps/frontend/src/
+├── views/
+│   ├── LayerDashboard.vue            # Hauptansicht
+│   ├── VendorAdmin.vue               # Vendor-Verwaltung
+│   ├── CustomerDetail.vue            # Kunden-Detail
+│   └── AuthorityDetail.vue           # Behörden-Detail
+│
+├── components/
+│   └── dashboard/
+│       ├── LayerTree.vue             # Hierarchie-Baum
+│       ├── VendorCard.vue            # Vendor-Übersicht
+│       ├── CustomerCard.vue          # Kunden-Kachel
+│       ├── AuthorityNode.vue         # Behörden-Knoten
+│       ├── LicenseGauge.vue          # Lizenz-Anzeige
+│       ├── StatsCard.vue             # Kennzahlen-Karte
+│       └── StatusBadge.vue           # Status-Indikator
+│
+├── composables/
+│   ├── useLayerDashboard.ts          # Dashboard-Logik
+│   ├── useCustomers.ts               # Kunden-CRUD
+│   └── useLicenses.ts                # Lizenz-Tracking
+│
+└── stores/
+    └── layerDashboard.ts             # Pinia Store
+```
+
+#### 3.2 LayerDashboard.vue Implementierung
+
+```vue
+<template>
+  <div class="layer-dashboard">
+    <!-- Layer 0: Vendor -->
+    <VendorCard
+      :vendor="dashboardData.vendor"
+      @click="showVendorAdmin"
+    />
+
+    <!-- Layer 1: Coordination Bodies -->
+    <div class="customers-grid">
+      <CustomerCard
+        v-for="customer in dashboardData.customers"
+        :key="customer.id"
+        :customer="customer"
+        @click="selectCustomer(customer)"
+        @expand="toggleExpand(customer)"
+      >
+        <!-- Layer 2: Authorities (expandable) -->
+        <template v-if="expandedCustomers.includes(customer.id)">
+          <AuthorityNode
+            v-for="authority in customer.authorities"
+            :key="authority.id"
+            :authority="authority"
+            @click="selectAuthority(authority)"
+          />
+        </template>
+      </CustomerCard>
+    </div>
+
+    <!-- Detail-Panel (Sidebar) -->
+    <DetailPanel v-if="selectedEntity" :entity="selectedEntity" />
+  </div>
+</template>
+```
+
+#### 3.3 Pinia Store (`stores/layerDashboard.ts`)
+
+```typescript
+export const useLayerDashboardStore = defineStore('layerDashboard', () => {
+  // State
+  const dashboardData = ref<LayerDashboardData | null>(null)
+  const selectedCustomerId = ref<string | null>(null)
+  const selectedAuthorityId = ref<string | null>(null)
+  const expandedCustomers = ref<string[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  // Getters
+  const selectedCustomer = computed(() =>
+    dashboardData.value?.customers.find(c => c.id === selectedCustomerId.value)
+  )
+
+  const selectedAuthority = computed(() =>
+    selectedCustomer.value?.authorities.find(a => a.id === selectedAuthorityId.value)
+  )
+
+  // Actions
+  async function fetchDashboard() {
+    loading.value = true
+    try {
+      const response = await api.get('/dashboard/layers')
+      dashboardData.value = response.data
+    } catch (e) {
+      error.value = 'Dashboard konnte nicht geladen werden'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchCustomerDetail(customerId: string) {
+    const response = await api.get(`/dashboard/layers/${customerId}`)
+    // Update customer in dashboardData
+  }
+
+  async function fetchAuthorityDetail(customerId: string, authorityId: string) {
+    const response = await api.get(`/dashboard/layers/${customerId}/authorities/${authorityId}`)
+    // Update authority data
+  }
+
+  return {
+    dashboardData,
+    selectedCustomer,
+    selectedAuthority,
+    expandedCustomers,
+    loading,
+    error,
+    fetchDashboard,
+    fetchCustomerDetail,
+    fetchAuthorityDetail,
+  }
+})
+```
+
+#### 3.4 Router-Konfiguration
+
+```typescript
+// router/index.ts - Neue Routes hinzufügen
+{
+  path: '/admin',
+  component: AdminLayout,
+  meta: { requiresAuth: true, roles: ['vendor_admin', 'vendor_support'] },
+  children: [
+    {
+      path: 'dashboard',
+      name: 'layer-dashboard',
+      component: () => import('@/views/LayerDashboard.vue'),
+    },
+    {
+      path: 'customers',
+      name: 'customer-management',
+      component: () => import('@/views/CustomerManagement.vue'),
+    },
+    {
+      path: 'customers/:id',
+      name: 'customer-detail',
+      component: () => import('@/views/CustomerDetail.vue'),
+    },
+    {
+      path: 'customers/:customerId/authorities/:authorityId',
+      name: 'authority-detail',
+      component: () => import('@/views/AuthorityDetail.vue'),
+    },
+  ],
+}
+```
+
+---
+
+### Phase 4: Admin-Portale (2-3 Wochen)
+
+#### 4.1 Vendor-Admin-Portal
+
+```
+VendorAdmin.vue
+├── Tabs:
+│   ├── Kunden-Übersicht (CustomerList.vue)
+│   ├── Lizenz-Management (LicenseManager.vue)
+│   ├── Globale Templates (TemplateManager.vue)
+│   ├── System-Einstellungen (VendorSettings.vue)
+│   └── Support-Tickets (SupportTickets.vue)
+```
+
+#### 4.2 Coordination Body Admin
+
+```
+TenantAdmin.vue (für group_admin)
+├── Tabs:
+│   ├── Prüfbehörden (AuthorityList.vue)
+│   ├── Benutzer (UserManager.vue)
+│   ├── Templates (TenantTemplates.vue)
+│   ├── Stammdaten (ProfileEditor.vue)
+│   └── Lizenzen (LicenseAllocation.vue)
+```
+
+#### 4.3 Authority Admin
+
+```
+AuthorityAdmin.vue (für authority_head)
+├── Tabs:
+│   ├── Benutzer (UserManager.vue)
+│   ├── Teams (TeamManager.vue)
+│   ├── Templates (AuthorityTemplates.vue)
+│   └── Stammdaten (ProfileEditor.vue)
+```
+
+---
+
+### Phase 5: Integration & Testing (1-2 Wochen)
+
+#### 5.1 Berechtigungsprüfung
+
+```python
+# apps/backend/app/core/permissions.py
+class LayerPermissions:
+    @staticmethod
+    def can_access_vendor(user: User) -> bool:
+        return user.role in ['vendor_admin', 'vendor_support']
+
+    @staticmethod
+    def can_manage_customer(user: User, customer_id: UUID) -> bool:
+        if user.role == 'vendor_admin':
+            return True
+        if user.role == 'group_admin':
+            return user.tenant.customer_id == customer_id
+        return False
+
+    @staticmethod
+    def can_manage_authority(user: User, authority_id: UUID) -> bool:
+        if user.role in ['vendor_admin', 'group_admin']:
+            return True
+        if user.role == 'authority_head':
+            return user.tenant_id == authority_id
+        return False
+```
+
+#### 5.2 Tests
+
+```python
+# tests/api/test_dashboard.py
+class TestLayerDashboard:
+    async def test_vendor_admin_sees_all_customers(self):
+        # ...
+
+    async def test_group_admin_sees_only_own_customer(self):
+        # ...
+
+    async def test_authority_head_sees_only_own_authority(self):
+        # ...
+
+# tests/api/test_customers.py
+class TestCustomerAPI:
+    async def test_create_customer(self):
+        # ...
+
+    async def test_license_tracking(self):
+        # ...
+```
+
+#### 5.3 E2E Tests
+
+```typescript
+// tests/e2e/layer-dashboard.spec.ts
+describe('Layer Dashboard', () => {
+  it('vendor_admin can see all layers', () => {
+    // Login as vendor_admin
+    // Navigate to /admin/dashboard
+    // Assert all customers visible
+    // Click on customer -> authorities visible
+    // Click on authority -> details visible
+  })
+
+  it('group_admin can only see own customer', () => {
+    // ...
+  })
+})
+```
+
+---
+
+### Phase 6: Deployment & Rollout (1 Woche)
+
+#### 6.1 Migrations-Strategie
+
+```bash
+# 1. Backup erstellen
+pg_dump flowaudit > backup_before_layer.sql
+
+# 2. Migrationen in Staging testen
+alembic upgrade head
+
+# 3. Seed-Daten für Vendor
+python scripts/seed_vendor.py
+
+# 4. Bestehende Tenants als Customers migrieren
+python scripts/migrate_tenants_to_customers.py
+
+# 5. Production-Deployment
+docker-compose up -d --build
+```
+
+#### 6.2 Feature-Flags
+
+```python
+# apps/backend/app/core/feature_flags.py
+FEATURE_FLAGS = {
+    "layer_dashboard": True,      # Layer-Dashboard aktivieren
+    "vendor_portal": True,        # Vendor-Portal aktivieren
+    "license_tracking": True,     # Lizenz-Tracking aktivieren
+    "template_hierarchy": False,  # Template-Hierarchie (Phase 2)
+}
+```
+
+---
+
+### Implementierungs-Reihenfolge (Zusammenfassung)
+
+```
+Woche 1-2:  ┌─────────────────────────────────────────┐
+            │ Phase 1: Backend-Modelle & Migrationen  │
+            │ - Vendor, Customer, Profile Modelle     │
+            │ - Alembic Migrationen                   │
+            │ - Pydantic Schemas                      │
+            └─────────────────────────────────────────┘
+                              │
+                              ▼
+Woche 3-4:  ┌─────────────────────────────────────────┐
+            │ Phase 2: Backend-API                    │
+            │ - Vendor-API                            │
+            │ - Customers-API                         │
+            │ - Dashboard-API                         │
+            │ - Profile-API                           │
+            └─────────────────────────────────────────┘
+                              │
+                              ▼
+Woche 5-7:  ┌─────────────────────────────────────────┐
+            │ Phase 3: Frontend Layer-Dashboard       │
+            │ - Vue-Komponenten                       │
+            │ - Pinia Store                           │
+            │ - Router-Integration                    │
+            └─────────────────────────────────────────┘
+                              │
+                              ▼
+Woche 8-10: ┌─────────────────────────────────────────┐
+            │ Phase 4: Admin-Portale                  │
+            │ - Vendor-Admin-Portal                   │
+            │ - CB-Admin-Portal                       │
+            │ - Authority-Admin-Portal                │
+            └─────────────────────────────────────────┘
+                              │
+                              ▼
+Woche 11-12:┌─────────────────────────────────────────┐
+            │ Phase 5 & 6: Testing & Deployment       │
+            │ - Unit Tests                            │
+            │ - E2E Tests                             │
+            │ - Staging-Deployment                    │
+            │ - Production-Rollout                    │
+            └─────────────────────────────────────────┘
+```
+
+---
+
+### Abhängigkeiten zwischen Komponenten
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          ABHÄNGIGKEITS-GRAPH                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Vendor-Modell ─────┬────────────────────────────────────────────────┐  │
+│        │            │                                                │  │
+│        ▼            ▼                                                │  │
+│  VendorUser    Customer-Modell ───────┬──────────────────────────┐  │  │
+│        │            │                  │                          │  │  │
+│        │            ▼                  ▼                          ▼  │  │
+│        │     LicenseUsage      LicenseAlert              Profile  │  │  │
+│        │            │                  │                     │    │  │  │
+│        └────────────┼──────────────────┼─────────────────────┼────┘  │  │
+│                     │                  │                     │       │  │
+│                     └──────────────────┴─────────────────────┘       │  │
+│                                    │                                 │  │
+│                                    ▼                                 │  │
+│                            Dashboard-API ◄───────────────────────────┘  │
+│                                    │                                    │
+│                                    ▼                                    │
+│                          LayerDashboard.vue                             │
+│                           │          │                                  │
+│              ┌────────────┘          └────────────┐                     │
+│              ▼                                    ▼                     │
+│       CustomerCard.vue                    AuthorityNode.vue             │
+│              │                                    │                     │
+│              ▼                                    ▼                     │
+│    CustomerDetail.vue                   AuthorityDetail.vue             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```

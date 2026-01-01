@@ -8,6 +8,7 @@
 | Admin-Dashboard | Mittel | 2 Wochen |
 | Deployment-Packaging | Mittel | 1 Woche |
 | Workflow-Historisierung | Hoch | 1.5 Wochen |
+| **Layer-Dashboard (NEU)** | **Hoch** | **9-12 Wochen** |
 
 ---
 
@@ -511,6 +512,258 @@ def build_llm_context(module_id: str, question: str) -> str:
 
 ---
 
+## 5. Layer-Dashboard & Multi-Tenant-Hierarchie
+
+### Ziel
+Interaktives Dashboard zur Visualisierung und Administration der 3-stufigen Mandanten-Hierarchie:
+- **Layer 0**: Vendor (Softwarefirma)
+- **Layer 1**: Coordination Body (Konzern/Dachorganisation)
+- **Layer 2**: Authority (Prüfbehörde)
+
+Detaillierte Dokumentation: [LAYER-STRUKTUR.md](./LAYER-STRUKTUR.md)
+
+---
+
+### Phase 1: Backend-Modelle (2-3 Wochen)
+
+#### 5.1.1 Vendor-Modelle
+```
+Datei: backend/app/models/vendor.py
+```
+- [ ] `Vendor` - Softwarefirma-Stammdaten
+- [ ] `VendorUser` - Vendor-Mitarbeiter (vendor_admin, vendor_support, vendor_developer, vendor_qa)
+
+#### 5.1.2 Kunden-Modelle
+```
+Datei: backend/app/models/customer.py
+```
+- [ ] `Customer` - Kunden-Stammdaten mit Lizenzinfos
+- [ ] `LicenseUsage` - Tägliche Lizenz-Snapshots
+- [ ] `LicenseAlert` - Lizenzwarnungen
+
+#### 5.1.3 Profil-Modelle
+```
+Datei: backend/app/models/profile.py
+```
+- [ ] `CoordinationBodyProfile` - CB-Stammdaten (Name, Adresse, Logo, Farben)
+- [ ] `AuthorityProfile` - Behörden-Stammdaten
+
+#### 5.1.4 Template-Modelle
+```
+Datei: backend/app/models/template.py
+```
+- [ ] `Template` - Hierarchische Templates mit Vererbung
+- [ ] `TemplateOverride` - Layer-spezifische Anpassungen
+
+#### 5.1.5 Datenbank-Migrationen
+```
+Datei: backend/alembic/versions/xxx_add_layer_models.py
+```
+- [ ] Vendor-Tabellen erstellen
+- [ ] Customer-Tabellen erstellen
+- [ ] Profile-Tabellen erstellen
+- [ ] Template-Tabellen erstellen
+- [ ] Fremdschlüssel-Beziehungen
+
+#### 5.1.6 Pydantic Schemas
+```
+Datei: backend/app/schemas/
+```
+- [ ] `vendor.py` - VendorCreate, VendorUpdate, VendorResponse
+- [ ] `customer.py` - CustomerCreate, CustomerUpdate, CustomerResponse
+- [ ] `profile.py` - ProfileCreate, ProfileUpdate, ProfileResponse
+- [ ] `dashboard.py` - LayerDashboardResponse, CustomerDetailResponse
+
+---
+
+### Phase 2: Backend-API (2 Wochen)
+
+#### 5.2.1 Vendor-API
+```
+Datei: backend/app/api/vendor.py
+```
+- [ ] `GET /api/v1/vendor` - Vendor-Infos abrufen
+- [ ] `PUT /api/v1/vendor` - Vendor-Infos aktualisieren
+- [ ] `GET /api/v1/vendor/users` - Vendor-User auflisten
+- [ ] `POST /api/v1/vendor/users` - Vendor-User erstellen
+
+#### 5.2.2 Customers-API
+```
+Datei: backend/app/api/customers.py
+```
+- [ ] `GET /api/v1/customers` - Alle Kunden auflisten
+- [ ] `POST /api/v1/customers` - Neuen Kunden anlegen
+- [ ] `GET /api/v1/customers/{id}` - Kunden-Details abrufen
+- [ ] `PUT /api/v1/customers/{id}` - Kunden aktualisieren
+- [ ] `DELETE /api/v1/customers/{id}` - Kunden deaktivieren
+- [ ] `GET /api/v1/customers/{id}/authorities` - Behörden des Kunden
+- [ ] `GET /api/v1/customers/{id}/licenses` - Lizenz-Historie
+
+#### 5.2.3 Layer-Dashboard-API
+```
+Datei: backend/app/api/dashboard.py (erweitern)
+```
+- [ ] `GET /api/v1/dashboard/layers` - Layer-Übersicht für Dashboard
+- [ ] `GET /api/v1/dashboard/layers/{customer_id}` - Kunden-Detail mit Behörden
+- [ ] `GET /api/v1/dashboard/layers/{customer_id}/authorities/{authority_id}` - Behörden-Detail
+
+#### 5.2.4 Profile-API
+```
+Datei: backend/app/api/profiles.py
+```
+- [ ] `GET /api/v1/tenants/{id}/profile` - Profil abrufen
+- [ ] `PUT /api/v1/tenants/{id}/profile` - Profil aktualisieren
+- [ ] `POST /api/v1/tenants/{id}/profile/logo` - Logo hochladen
+
+---
+
+### Phase 3: Frontend Layer-Dashboard (2-3 Wochen)
+
+#### 5.3.1 Vue-Komponenten
+```
+Verzeichnis: frontend/src/views/
+```
+- [ ] `LayerDashboard.vue` - Hauptansicht mit interaktivem Hierarchie-Baum
+- [ ] `VendorAdmin.vue` - Vendor-Verwaltung
+- [ ] `CustomerDetail.vue` - Kunden-Detail
+- [ ] `AuthorityDetail.vue` - Behörden-Detail
+
+#### 5.3.2 Dashboard-Komponenten
+```
+Verzeichnis: frontend/src/components/dashboard/
+```
+- [ ] `LayerTree.vue` - Hierarchie-Baum mit Expand/Collapse
+- [ ] `VendorCard.vue` - Vendor-Übersichtskarte
+- [ ] `CustomerCard.vue` - Kunden-Kachel mit Lizenz-Anzeige
+- [ ] `AuthorityNode.vue` - Behörden-Knoten
+- [ ] `LicenseGauge.vue` - Visuelle Lizenz-Auslastung
+- [ ] `StatsCard.vue` - Kennzahlen-Karte
+- [ ] `StatusBadge.vue` - Status-Indikator (active/suspended/trial)
+
+#### 5.3.3 Pinia Store
+```
+Datei: frontend/src/stores/layerDashboard.ts
+```
+- [ ] State: dashboardData, selectedCustomerId, expandedCustomers, loading, error
+- [ ] Actions: fetchDashboard, fetchCustomerDetail, fetchAuthorityDetail
+- [ ] Getters: selectedCustomer, selectedAuthority
+
+#### 5.3.4 Router-Integration
+```
+Datei: frontend/src/router/index.ts
+```
+- [ ] Route: `/admin/dashboard` → LayerDashboard.vue
+- [ ] Route: `/admin/customers` → CustomerManagement.vue
+- [ ] Route: `/admin/customers/:id` → CustomerDetail.vue
+- [ ] Route: `/admin/customers/:customerId/authorities/:authorityId` → AuthorityDetail.vue
+
+---
+
+### Phase 4: Admin-Portale (2-3 Wochen)
+
+#### 5.4.1 Vendor-Admin-Portal
+```
+Datei: frontend/src/views/VendorAdmin.vue
+```
+- [ ] Tab: Kunden-Übersicht (CustomerList.vue)
+- [ ] Tab: Lizenz-Management (LicenseManager.vue)
+- [ ] Tab: Globale Templates (TemplateManager.vue)
+- [ ] Tab: System-Einstellungen (VendorSettings.vue)
+- [ ] Tab: Support-Tickets (SupportTickets.vue)
+
+#### 5.4.2 Coordination Body Admin
+```
+Datei: frontend/src/views/TenantAdmin.vue
+```
+- [ ] Tab: Prüfbehörden (AuthorityList.vue)
+- [ ] Tab: Benutzer (UserManager.vue)
+- [ ] Tab: Templates (TenantTemplates.vue)
+- [ ] Tab: Stammdaten (ProfileEditor.vue)
+- [ ] Tab: Lizenzen (LicenseAllocation.vue)
+
+#### 5.4.3 Authority Admin
+```
+Datei: frontend/src/views/AuthorityAdmin.vue
+```
+- [ ] Tab: Benutzer (UserManager.vue)
+- [ ] Tab: Teams (TeamManager.vue)
+- [ ] Tab: Templates (AuthorityTemplates.vue)
+- [ ] Tab: Stammdaten (ProfileEditor.vue)
+
+---
+
+### Phase 5: Integration & Testing (1-2 Wochen)
+
+#### 5.5.1 Berechtigungsprüfung
+```
+Datei: backend/app/core/permissions.py
+```
+- [ ] `LayerPermissions.can_access_vendor(user)` - Vendor-Zugriff
+- [ ] `LayerPermissions.can_manage_customer(user, customer_id)` - Kunden-Verwaltung
+- [ ] `LayerPermissions.can_manage_authority(user, authority_id)` - Behörden-Verwaltung
+
+#### 5.5.2 Backend-Tests
+```
+Datei: backend/tests/api/test_dashboard.py
+```
+- [ ] `test_vendor_admin_sees_all_customers`
+- [ ] `test_group_admin_sees_only_own_customer`
+- [ ] `test_authority_head_sees_only_own_authority`
+- [ ] `test_license_tracking_updates_correctly`
+
+#### 5.5.3 E2E-Tests
+```
+Datei: frontend/tests/e2e/layer-dashboard.spec.ts
+```
+- [ ] `vendor_admin can see all layers`
+- [ ] `group_admin can only see own customer`
+- [ ] `drill-down navigation works correctly`
+
+---
+
+### Phase 6: Deployment & Rollout (1 Woche)
+
+#### 5.6.1 Migrations-Strategie
+- [ ] Backup erstellen vor Migration
+- [ ] Migrationen in Staging testen
+- [ ] Seed-Daten für Vendor erstellen (scripts/seed_vendor.py)
+- [ ] Bestehende Tenants als Customers migrieren (scripts/migrate_tenants_to_customers.py)
+- [ ] Production-Deployment
+
+#### 5.6.2 Feature-Flags
+```
+Datei: backend/app/core/feature_flags.py
+```
+- [ ] `layer_dashboard: True` - Layer-Dashboard aktivieren
+- [ ] `vendor_portal: True` - Vendor-Portal aktivieren
+- [ ] `license_tracking: True` - Lizenz-Tracking aktivieren
+- [ ] `template_hierarchy: False` - Template-Hierarchie (spätere Phase)
+
+---
+
+### Layer-Dashboard Abhängigkeiten
+
+```
+Phase 1 (Backend-Modelle)
+    │
+    ▼
+Phase 2 (Backend-API)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+Phase 3 (Frontend)       Phase 4 (Admin-Portale)
+    │                          │
+    └──────────────────────────┘
+                │
+                ▼
+         Phase 5 (Testing)
+                │
+                ▼
+         Phase 6 (Deployment)
+```
+
+---
+
 ## Befehl zum Starten
 
 Um mit der Implementierung zu beginnen, verwende folgenden Prompt:
@@ -525,4 +778,21 @@ Beginne mit:
 3. API-Endpoints für Modul-Verwaltung
 
 Refactore VP-AI als erstes Modul.
+```
+
+---
+
+## Befehl für Layer-Dashboard
+
+Um mit der Layer-Dashboard-Implementierung zu beginnen:
+
+```
+Implementiere das Layer-Dashboard basierend auf dem Plan in
+docs/02_IMPLEMENTATION_TASKS.md (Abschnitt 5) und docs/LAYER-STRUKTUR.md.
+
+Beginne mit Phase 1:
+1. Vendor-Modell und VendorUser erstellen
+2. Customer-Modell mit Lizenz-Tracking erstellen
+3. Profile-Modelle für CB und Authority erstellen
+4. Alembic-Migrationen generieren
 ```
