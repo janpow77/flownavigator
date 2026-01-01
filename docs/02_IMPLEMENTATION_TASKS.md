@@ -8,6 +8,8 @@
 | Admin-Dashboard | Mittel | 2 Wochen |
 | Deployment-Packaging | Mittel | 1 Woche |
 | Workflow-Historisierung | Hoch | 1.5 Wochen |
+| **Layer-Dashboard** | **Hoch** | **9-12 Wochen** |
+| **UI Enhancements** | **Hoch** | **3 Wochen** (Radial View ✅ fertig) |
 
 ---
 
@@ -511,6 +513,258 @@ def build_llm_context(module_id: str, question: str) -> str:
 
 ---
 
+## 5. Layer-Dashboard & Multi-Tenant-Hierarchie
+
+### Ziel
+Interaktives Dashboard zur Visualisierung und Administration der 3-stufigen Mandanten-Hierarchie:
+- **Layer 0**: Vendor (Softwarefirma)
+- **Layer 1**: Coordination Body (Konzern/Dachorganisation)
+- **Layer 2**: Authority (Prüfbehörde)
+
+Detaillierte Dokumentation: [LAYER-STRUKTUR.md](./LAYER-STRUKTUR.md)
+
+---
+
+### Phase 1: Backend-Modelle (2-3 Wochen)
+
+#### 5.1.1 Vendor-Modelle
+```
+Datei: backend/app/models/vendor.py
+```
+- [ ] `Vendor` - Softwarefirma-Stammdaten
+- [ ] `VendorUser` - Vendor-Mitarbeiter (vendor_admin, vendor_support, vendor_developer, vendor_qa)
+
+#### 5.1.2 Kunden-Modelle
+```
+Datei: backend/app/models/customer.py
+```
+- [ ] `Customer` - Kunden-Stammdaten mit Lizenzinfos
+- [ ] `LicenseUsage` - Tägliche Lizenz-Snapshots
+- [ ] `LicenseAlert` - Lizenzwarnungen
+
+#### 5.1.3 Profil-Modelle
+```
+Datei: backend/app/models/profile.py
+```
+- [ ] `CoordinationBodyProfile` - CB-Stammdaten (Name, Adresse, Logo, Farben)
+- [ ] `AuthorityProfile` - Behörden-Stammdaten
+
+#### 5.1.4 Template-Modelle
+```
+Datei: backend/app/models/template.py
+```
+- [ ] `Template` - Hierarchische Templates mit Vererbung
+- [ ] `TemplateOverride` - Layer-spezifische Anpassungen
+
+#### 5.1.5 Datenbank-Migrationen
+```
+Datei: backend/alembic/versions/xxx_add_layer_models.py
+```
+- [ ] Vendor-Tabellen erstellen
+- [ ] Customer-Tabellen erstellen
+- [ ] Profile-Tabellen erstellen
+- [ ] Template-Tabellen erstellen
+- [ ] Fremdschlüssel-Beziehungen
+
+#### 5.1.6 Pydantic Schemas
+```
+Datei: backend/app/schemas/
+```
+- [ ] `vendor.py` - VendorCreate, VendorUpdate, VendorResponse
+- [ ] `customer.py` - CustomerCreate, CustomerUpdate, CustomerResponse
+- [ ] `profile.py` - ProfileCreate, ProfileUpdate, ProfileResponse
+- [ ] `dashboard.py` - LayerDashboardResponse, CustomerDetailResponse
+
+---
+
+### Phase 2: Backend-API (2 Wochen)
+
+#### 5.2.1 Vendor-API
+```
+Datei: backend/app/api/vendor.py
+```
+- [ ] `GET /api/v1/vendor` - Vendor-Infos abrufen
+- [ ] `PUT /api/v1/vendor` - Vendor-Infos aktualisieren
+- [ ] `GET /api/v1/vendor/users` - Vendor-User auflisten
+- [ ] `POST /api/v1/vendor/users` - Vendor-User erstellen
+
+#### 5.2.2 Customers-API
+```
+Datei: backend/app/api/customers.py
+```
+- [ ] `GET /api/v1/customers` - Alle Kunden auflisten
+- [ ] `POST /api/v1/customers` - Neuen Kunden anlegen
+- [ ] `GET /api/v1/customers/{id}` - Kunden-Details abrufen
+- [ ] `PUT /api/v1/customers/{id}` - Kunden aktualisieren
+- [ ] `DELETE /api/v1/customers/{id}` - Kunden deaktivieren
+- [ ] `GET /api/v1/customers/{id}/authorities` - Behörden des Kunden
+- [ ] `GET /api/v1/customers/{id}/licenses` - Lizenz-Historie
+
+#### 5.2.3 Layer-Dashboard-API
+```
+Datei: backend/app/api/dashboard.py (erweitern)
+```
+- [ ] `GET /api/v1/dashboard/layers` - Layer-Übersicht für Dashboard
+- [ ] `GET /api/v1/dashboard/layers/{customer_id}` - Kunden-Detail mit Behörden
+- [ ] `GET /api/v1/dashboard/layers/{customer_id}/authorities/{authority_id}` - Behörden-Detail
+
+#### 5.2.4 Profile-API
+```
+Datei: backend/app/api/profiles.py
+```
+- [ ] `GET /api/v1/tenants/{id}/profile` - Profil abrufen
+- [ ] `PUT /api/v1/tenants/{id}/profile` - Profil aktualisieren
+- [ ] `POST /api/v1/tenants/{id}/profile/logo` - Logo hochladen
+
+---
+
+### Phase 3: Frontend Layer-Dashboard (2-3 Wochen)
+
+#### 5.3.1 Vue-Komponenten
+```
+Verzeichnis: frontend/src/views/
+```
+- [ ] `LayerDashboard.vue` - Hauptansicht mit interaktivem Hierarchie-Baum
+- [ ] `VendorAdmin.vue` - Vendor-Verwaltung
+- [ ] `CustomerDetail.vue` - Kunden-Detail
+- [ ] `AuthorityDetail.vue` - Behörden-Detail
+
+#### 5.3.2 Dashboard-Komponenten
+```
+Verzeichnis: frontend/src/components/dashboard/
+```
+- [ ] `LayerTree.vue` - Hierarchie-Baum mit Expand/Collapse
+- [ ] `VendorCard.vue` - Vendor-Übersichtskarte
+- [ ] `CustomerCard.vue` - Kunden-Kachel mit Lizenz-Anzeige
+- [ ] `AuthorityNode.vue` - Behörden-Knoten
+- [ ] `LicenseGauge.vue` - Visuelle Lizenz-Auslastung
+- [ ] `StatsCard.vue` - Kennzahlen-Karte
+- [ ] `StatusBadge.vue` - Status-Indikator (active/suspended/trial)
+
+#### 5.3.3 Pinia Store
+```
+Datei: frontend/src/stores/layerDashboard.ts
+```
+- [ ] State: dashboardData, selectedCustomerId, expandedCustomers, loading, error
+- [ ] Actions: fetchDashboard, fetchCustomerDetail, fetchAuthorityDetail
+- [ ] Getters: selectedCustomer, selectedAuthority
+
+#### 5.3.4 Router-Integration
+```
+Datei: frontend/src/router/index.ts
+```
+- [ ] Route: `/admin/dashboard` → LayerDashboard.vue
+- [ ] Route: `/admin/customers` → CustomerManagement.vue
+- [ ] Route: `/admin/customers/:id` → CustomerDetail.vue
+- [ ] Route: `/admin/customers/:customerId/authorities/:authorityId` → AuthorityDetail.vue
+
+---
+
+### Phase 4: Admin-Portale (2-3 Wochen)
+
+#### 5.4.1 Vendor-Admin-Portal
+```
+Datei: frontend/src/views/VendorAdmin.vue
+```
+- [ ] Tab: Kunden-Übersicht (CustomerList.vue)
+- [ ] Tab: Lizenz-Management (LicenseManager.vue)
+- [ ] Tab: Globale Templates (TemplateManager.vue)
+- [ ] Tab: System-Einstellungen (VendorSettings.vue)
+- [ ] Tab: Support-Tickets (SupportTickets.vue)
+
+#### 5.4.2 Coordination Body Admin
+```
+Datei: frontend/src/views/TenantAdmin.vue
+```
+- [ ] Tab: Prüfbehörden (AuthorityList.vue)
+- [ ] Tab: Benutzer (UserManager.vue)
+- [ ] Tab: Templates (TenantTemplates.vue)
+- [ ] Tab: Stammdaten (ProfileEditor.vue)
+- [ ] Tab: Lizenzen (LicenseAllocation.vue)
+
+#### 5.4.3 Authority Admin
+```
+Datei: frontend/src/views/AuthorityAdmin.vue
+```
+- [ ] Tab: Benutzer (UserManager.vue)
+- [ ] Tab: Teams (TeamManager.vue)
+- [ ] Tab: Templates (AuthorityTemplates.vue)
+- [ ] Tab: Stammdaten (ProfileEditor.vue)
+
+---
+
+### Phase 5: Integration & Testing (1-2 Wochen)
+
+#### 5.5.1 Berechtigungsprüfung
+```
+Datei: backend/app/core/permissions.py
+```
+- [ ] `LayerPermissions.can_access_vendor(user)` - Vendor-Zugriff
+- [ ] `LayerPermissions.can_manage_customer(user, customer_id)` - Kunden-Verwaltung
+- [ ] `LayerPermissions.can_manage_authority(user, authority_id)` - Behörden-Verwaltung
+
+#### 5.5.2 Backend-Tests
+```
+Datei: backend/tests/api/test_dashboard.py
+```
+- [ ] `test_vendor_admin_sees_all_customers`
+- [ ] `test_group_admin_sees_only_own_customer`
+- [ ] `test_authority_head_sees_only_own_authority`
+- [ ] `test_license_tracking_updates_correctly`
+
+#### 5.5.3 E2E-Tests
+```
+Datei: frontend/tests/e2e/layer-dashboard.spec.ts
+```
+- [ ] `vendor_admin can see all layers`
+- [ ] `group_admin can only see own customer`
+- [ ] `drill-down navigation works correctly`
+
+---
+
+### Phase 6: Deployment & Rollout (1 Woche)
+
+#### 5.6.1 Migrations-Strategie
+- [ ] Backup erstellen vor Migration
+- [ ] Migrationen in Staging testen
+- [ ] Seed-Daten für Vendor erstellen (scripts/seed_vendor.py)
+- [ ] Bestehende Tenants als Customers migrieren (scripts/migrate_tenants_to_customers.py)
+- [ ] Production-Deployment
+
+#### 5.6.2 Feature-Flags
+```
+Datei: backend/app/core/feature_flags.py
+```
+- [ ] `layer_dashboard: True` - Layer-Dashboard aktivieren
+- [ ] `vendor_portal: True` - Vendor-Portal aktivieren
+- [ ] `license_tracking: True` - Lizenz-Tracking aktivieren
+- [ ] `template_hierarchy: False` - Template-Hierarchie (spätere Phase)
+
+---
+
+### Layer-Dashboard Abhängigkeiten
+
+```
+Phase 1 (Backend-Modelle)
+    │
+    ▼
+Phase 2 (Backend-API)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+Phase 3 (Frontend)       Phase 4 (Admin-Portale)
+    │                          │
+    └──────────────────────────┘
+                │
+                ▼
+         Phase 5 (Testing)
+                │
+                ▼
+         Phase 6 (Deployment)
+```
+
+---
+
 ## Befehl zum Starten
 
 Um mit der Implementierung zu beginnen, verwende folgenden Prompt:
@@ -525,4 +779,254 @@ Beginne mit:
 3. API-Endpoints für Modul-Verwaltung
 
 Refactore VP-AI als erstes Modul.
+```
+
+---
+
+## Befehl für Layer-Dashboard
+
+Um mit der Layer-Dashboard-Implementierung zu beginnen:
+
+```
+Implementiere das Layer-Dashboard basierend auf dem Plan in
+docs/02_IMPLEMENTATION_TASKS.md (Abschnitt 5) und docs/LAYER-STRUKTUR.md.
+
+Beginne mit Phase 1:
+1. Vendor-Modell und VendorUser erstellen
+2. Customer-Modell mit Lizenz-Tracking erstellen
+3. Profile-Modelle für CB und Authority erstellen
+4. Alembic-Migrationen generieren
+```
+
+---
+
+## 6. UI Enhancements - Shimmer Loader, Microinteractions & Radial View
+
+### Ziel
+Moderne, interaktive und performante UI-Komponenten für bessere User Experience:
+- **Shimmer Loader** - Perceived Performance verbessern
+- **Microinteractions** - Visuelles Feedback bei Aktionen
+- **Radial View** - Alternative Navigation (optional)
+- **View-Switcher als Dropdown** - Reduzierte Icon-Komplexität
+
+---
+
+### Phase 1: Shimmer Loader & Skeleton Screens (1 Woche)
+
+#### 6.1.1 CSS Animations
+```
+Datei: frontend/src/styles/themes.css
+```
+- [ ] `@keyframes shimmer` - Basis-Animation
+- [ ] `@keyframes pulse-subtle` - Alternative Pulse-Animation
+- [ ] `@keyframes skeleton-wave` - Wave-Effekt
+- [ ] `.skeleton`, `.skeleton-wave`, `.skeleton-pulse` - Basis-Klassen
+- [ ] `.skeleton-text`, `.skeleton-avatar`, `.skeleton-box`, `.skeleton-card` - Varianten
+- [ ] `@media (prefers-reduced-motion)` - Accessibility
+
+#### 6.1.2 Skeleton Komponenten
+```
+Verzeichnis: frontend/src/components/common/
+```
+- [ ] `SkeletonLoader.vue` - Basis-Komponente (type, size, variant props)
+- [ ] `SkeletonTable.vue` - Tabellen-Skeleton mit Header/Rows
+- [ ] `SkeletonCard.vue` - Karten-Skeleton (Grid/List Layout)
+- [ ] `SkeletonStats.vue` - Dashboard-Statistiken
+
+#### 6.1.3 View-Integration
+```
+Dateien: frontend/src/views/
+```
+- [ ] `AuditCasesView.vue` - Skeleton während Laden
+- [ ] `DashboardView.vue` - Stats & Cards Skeleton
+- [ ] `GroupQueriesView.vue` - Listen-Skeleton
+- [ ] Delayed Skeleton (erst nach 200ms anzeigen für schnelle Requests)
+
+---
+
+### Phase 2: Microinteractions (1 Woche)
+
+#### 6.2.1 Button Feedbacks
+```
+Dateien: frontend/src/composables/
+```
+- [ ] `useRipple.ts` - Ripple-Effekt Composable
+- [ ] `useButtonState.ts` - Loading/Success/Error States
+- [ ] `@keyframes ripple` - CSS Animation
+
+#### 6.2.2 Enhanced Button Component
+```
+Datei: frontend/src/components/common/EnhancedButton.vue
+```
+- [ ] Props: variant, size, loading, success, error, ripple
+- [ ] Spinner während Loading
+- [ ] Checkmark bei Success (mit Animation)
+- [ ] Shake bei Error
+- [ ] `transform: scale(0.97)` bei :active
+
+#### 6.2.3 Input Validierung
+```
+Datei: frontend/src/components/common/ValidatedInput.vue
+```
+- [ ] Real-time Validierung
+- [ ] Success/Error Icons mit Pop-Animation
+- [ ] Shake-Animation bei Fehler
+- [ ] Error-Message mit Slide-Down
+
+#### 6.2.4 Toast Notifications
+```
+Dateien: frontend/src/components/common/
+```
+- [ ] `Toast.vue` - Einzelne Toast-Komponente
+- [ ] `ToastContainer.vue` - Container mit Teleport
+- [ ] `useToast.ts` - Composable (success, error, info, warning)
+- [ ] Progress-Bar für Auto-Dismiss
+- [ ] Positions: top-right, top-left, bottom-right, bottom-left
+
+#### 6.2.5 Copy-to-Clipboard
+```
+Datei: frontend/src/components/common/CopyButton.vue
+```
+- [ ] Icon-Switch Animation (Copy → Check)
+- [ ] Toast-Integration
+- [ ] Sizes: sm, md, lg
+
+---
+
+### Phase 3: Radial View ✅ BEREITS IMPLEMENTIERT
+
+> **Status:** RadialView.vue ist vollständig implementiert in:
+> `apps/frontend/src/components/views/RadialView.vue`
+
+#### 6.3.1 Bereits vorhanden ✅
+```
+Datei: frontend/src/components/views/RadialView.vue (553 Zeilen)
+```
+- [x] SVG-basierte Darstellung mit Orbit-Ringen
+- [x] Center Hub mit User-Avatar & Initialen
+- [x] 8 Module-Nodes im Kreis angeordnet
+- [x] Pulse-Ring Animationen (2 Ringe, verzögert)
+- [x] Connection Lines mit Glow-Effekt bei Hover
+- [x] Hover-Info-Panel mit Status, Version, Action-Button
+- [x] Color Picker mit 7 Presets (Lila, Blau, Cyan, Grün, Orange, Pink, Rot)
+- [x] Zoom Controls (50%-150%) mit Slider + Mausrad
+- [x] LocalStorage Persistenz (Zoom, Farbe)
+- [x] Parallax-Effekt bei Mausbewegung
+- [x] Status-Labels (Aktiv, Beta, Neu, Gesperrt)
+- [x] Integration mit usePreferences (animationsEnabled, hoverEffectsEnabled)
+- [x] Router-Links zu Modulen
+
+#### 6.3.2 Export vorhanden ✅
+```
+Datei: frontend/src/components/views/index.ts
+```
+- [x] TilesView, ListView, TreeView, RadialView, MinimalView exportiert
+
+#### 6.3.3 Noch zu tun (Integration)
+- [ ] Keyboard-Navigation für Accessibility (Tab durch Module)
+- [ ] ARIA-Labels für Screenreader
+- [ ] ViewSwitcher-Dropdown Integration (siehe Phase 4)
+
+---
+
+### Phase 4: View-Switcher Dropdown (0.5 Wochen)
+
+> **Ziel:** Alle 5 vorhandenen Views über ein Dropdown auswählbar machen,
+> statt mehrerer Icons oben rechts.
+
+#### 6.4.1 Vorhandene Views (bereits exportiert)
+```
+Datei: frontend/src/components/views/index.ts
+```
+- [x] `TilesView` - Kachel-Ansicht
+- [x] `ListView` - Listen-Ansicht
+- [x] `TreeView` - Baum-Ansicht
+- [x] `RadialView` - Radial-Navigation ✅
+- [x] `MinimalView` - Minimale Ansicht
+
+#### 6.4.2 ViewSwitcher Dropdown erstellen
+```
+Datei: frontend/src/components/common/ViewSwitcher.vue
+```
+- [ ] Dropdown-Komponente für View-Auswahl
+- [ ] Alle 5 Views als Optionen
+- [ ] Icon + Label pro Option
+- [ ] Keyboard-Navigation (Arrow Keys, Enter, Escape)
+- [ ] LocalStorage für View-Preference pro Route
+- [ ] Tooltip mit Tastenkürzel (z.B. "T für Tabelle")
+
+```vue
+<!-- Struktur -->
+<ViewSwitcher v-model="currentView">
+  <ViewOption value="tiles" icon="grid-2x2" label="Kacheln" shortcut="K" />
+  <ViewOption value="list" icon="list" label="Liste" shortcut="L" />
+  <ViewOption value="tree" icon="git-branch" label="Baum" shortcut="B" />
+  <ViewOption value="radial" icon="circle-dot" label="Radial" shortcut="R" />
+  <ViewOption value="minimal" icon="minus" label="Minimal" shortcut="M" />
+</ViewSwitcher>
+```
+
+#### 6.4.3 Integration in Views
+- [ ] `DashboardView.vue` - ViewSwitcher im Header
+- [ ] `AuditCasesView.vue` - ViewSwitcher einbinden
+- [ ] `GroupQueriesView.vue` - ViewSwitcher einbinden
+- [ ] Header-Layout anpassen (1 Dropdown statt 5 Icons)
+- [ ] Icons oben rechts reduzieren
+
+---
+
+### Phase 5: Testing & Performance (0.5 Wochen)
+
+#### 6.5.1 Performance-Optimierung
+- [ ] `will-change: transform` für Animationen
+- [ ] `transform` statt `left/top` für GPU-Beschleunigung
+- [ ] Debounce für Resize-Events
+- [ ] Lazy-Load für D3.js (nur bei Radial View)
+
+#### 6.5.2 Accessibility
+- [ ] `prefers-reduced-motion` respektieren
+- [ ] ARIA-Labels für Skeleton-Loader
+- [ ] Keyboard-Navigation für Radial View
+- [ ] Focus-States für alle interaktiven Elemente
+
+#### 6.5.3 Tests
+```
+Dateien: frontend/tests/
+```
+- [ ] `SkeletonLoader.spec.ts` - Unit Tests
+- [ ] `Toast.spec.ts` - Toast Composable Tests
+- [ ] `EnhancedButton.spec.ts` - Button States
+- [ ] E2E: Shimmer während Laden sichtbar
+
+---
+
+### UI Enhancements Zusammenfassung
+
+| Komponente | Aufwand | Status |
+|------------|---------|--------|
+| Shimmer Loader | 1 Woche | ⬜ Offen |
+| Microinteractions | 1 Woche | ⬜ Offen |
+| Radial View | ~~1-2 Wochen~~ | ✅ **FERTIG** |
+| View-Switcher Dropdown | 0.5 Wochen | ⬜ Offen |
+| Testing & Performance | 0.5 Wochen | ⬜ Offen |
+| **Gesamt** | **3 Wochen** | |
+
+> **Hinweis:** Radial View ist bereits vollständig implementiert in
+> `apps/frontend/src/components/views/RadialView.vue` (553 Zeilen)
+
+---
+
+## Befehl für UI Enhancements
+
+Um mit den UI Enhancements zu beginnen:
+
+```
+Implementiere die UI Enhancements basierend auf dem Plan in
+docs/02_IMPLEMENTATION_TASKS.md (Abschnitt 6).
+
+Beginne mit Phase 1:
+1. Shimmer CSS Animations in themes.css
+2. SkeletonLoader.vue Basis-Komponente
+3. SkeletonTable.vue für Tabellen-Views
+4. Integration in AuditCasesView.vue
 ```
