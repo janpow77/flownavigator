@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd apps/backend*)",
+      "Bash(cd apps/frontend*)",
+      "Bash(pytest*)",
+      "Bash(npm run*)",
+      "Bash(alembic*)",
+      "Bash(git*)"
+    ]
+  }
+}
