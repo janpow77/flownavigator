@@ -1,5 +1,201 @@
 # Konzept: Development-Modul mit iterativem Workflow und Memory
 
+## 0. Eigenständige Modul-Architektur
+
+Das Development-Modul ist ein **vollständig eigenständiges Package** innerhalb der FlowAudit-Plattform. Es hat keine harten Abhängigkeiten zu anderen Fachmodulen und kann unabhängig deployed werden.
+
+### 0.1 Package-Struktur
+
+```
+packages/
+├── common/                      # Shared utilities (bereits vorhanden)
+├── validation/                  # Validation-Modul (bereits vorhanden)
+├── checklists/                  # Checklists-Modul (bereits vorhanden)
+├── ...
+│
+└── development/                 # ◀ NEUES EIGENSTÄNDIGES MODUL
+    ├── package.json
+    ├── tsconfig.json
+    │
+    ├── src/
+    │   ├── index.ts             # Public API exports
+    │   │
+    │   ├── models/              # Datenmodelle
+    │   │   ├── development-session.ts
+    │   │   ├── development-iteration.ts
+    │   │   ├── development-file.ts
+    │   │   ├── module-registry.ts
+    │   │   └── user-profile.ts
+    │   │
+    │   ├── services/            # Business Logic
+    │   │   ├── session-service.ts
+    │   │   ├── iteration-service.ts
+    │   │   ├── context-service.ts
+    │   │   ├── multi-llm-service.ts
+    │   │   ├── git-integration-service.ts
+    │   │   └── dependency-validator.ts
+    │   │
+    │   ├── api/                 # REST API Endpoints
+    │   │   ├── sessions.ts
+    │   │   ├── iterations.ts
+    │   │   ├── files.ts
+    │   │   ├── modules.ts
+    │   │   └── user-profile.ts
+    │   │
+    │   └── types/               # TypeScript Interfaces
+    │       └── index.ts
+    │
+    └── tests/
+        └── ...
+
+apps/
+├── backend/
+│   └── app/
+│       └── modules/
+│           └── development/     # ◀ Backend-Integration
+│               ├── __init__.py
+│               ├── router.py    # FastAPI Router
+│               ├── models.py    # SQLAlchemy Models
+│               ├── schemas.py   # Pydantic Schemas
+│               └── services/
+│                   ├── session_service.py
+│                   ├── context_service.py
+│                   ├── multi_llm_service.py
+│                   ├── git_integration_service.py
+│                   └── dependency_validator.py
+│
+└── frontend/
+    └── src/
+        └── modules/
+            └── development/     # ◀ Frontend-Integration
+                ├── views/
+                │   ├── DevelopmentDashboard.vue
+                │   ├── SessionWizard.vue
+                │   ├── FeedbackLoop.vue
+                │   └── ModuleFlowDiagram.vue
+                ├── components/
+                │   ├── FileUploader.vue
+                │   ├── IterationPanel.vue
+                │   ├── ProposalView.vue
+                │   └── UserProfileSettings.vue
+                └── stores/
+                    └── development.ts
+```
+
+### 0.2 Abhängigkeiten
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    DEVELOPMENT-MODUL ABHÄNGIGKEITEN                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                     @flowaudit/development                               │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                             │
+│                    ┌───────────────┼───────────────┐                            │
+│                    ▼               ▼               ▼                            │
+│            ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                   │
+│            │  @flowaudit │  │  PostgreSQL │  │  LLM APIs   │                   │
+│            │  /common    │  │  + pgvector │  │  (extern)   │                   │
+│            └─────────────┘  └─────────────┘  └─────────────┘                   │
+│                 ▲                  ▲               ▲                            │
+│                 │                  │               │                            │
+│            Shared Types      Vektordatenbank   GLM-4, Claude                   │
+│            Utilities         (KEINE ChromaDB!)  Multi-Provider                  │
+│                                                                                  │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│  KEINE Abhängigkeiten zu:                                                       │
+│  ✗ @flowaudit/checklists                                                        │
+│  ✗ @flowaudit/documents                                                         │
+│  ✗ @flowaudit/group-queries                                                     │
+│  ✗ Andere Fachmodule                                                            │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 0.3 Vektordatenbank: pgvector (KEINE ChromaDB)
+
+Das Development-Modul nutzt **pgvector** als Vektordatenbank-Erweiterung für PostgreSQL. Dies vermeidet eine zusätzliche Infrastruktur-Komponente.
+
+```sql
+-- pgvector Extension aktivieren
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Embeddings für semantische Suche
+CREATE TABLE development_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id),
+
+    -- Referenz
+    entity_type VARCHAR(50) NOT NULL,        -- 'iteration', 'feedback', 'file_chunk'
+    entity_id UUID NOT NULL,
+
+    -- Content
+    content_text TEXT NOT NULL,
+
+    -- Vector (1536 für OpenAI ada-002, 1024 für andere)
+    embedding vector(1536),
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Index für schnelle Similarity-Suche
+CREATE INDEX idx_dev_embeddings_vector
+    ON development_embeddings
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- Index für Entity-Lookup
+CREATE INDEX idx_dev_embeddings_entity
+    ON development_embeddings(entity_type, entity_id);
+```
+
+**Vorteile von pgvector gegenüber ChromaDB:**
+
+| Aspekt | pgvector | ChromaDB |
+|--------|----------|----------|
+| **Infrastruktur** | Nutzt bestehende PostgreSQL | Separater Service nötig |
+| **Transaktionen** | ACID-konform mit Rest der DB | Eigene Transaktionslogik |
+| **Backup** | In DB-Backup enthalten | Separates Backup nötig |
+| **Skalierung** | Mit PostgreSQL | Eigene Skalierung |
+| **Latenz** | Direkt in DB-Queries | Netzwerk-Overhead |
+
+### 0.4 Modul-Registrierung
+
+```python
+# apps/backend/app/modules/development/__init__.py
+
+from fastapi import APIRouter
+from app.core.module_registry import register_module
+
+router = APIRouter(prefix="/api/v1/development", tags=["development"])
+
+# Sub-Router importieren
+from .api import sessions, iterations, files, modules, user_profile
+
+router.include_router(sessions.router)
+router.include_router(iterations.router)
+router.include_router(files.router)
+router.include_router(modules.router)
+router.include_router(user_profile.router)
+
+# Modul registrieren
+register_module(
+    name="development",
+    display_name="Development-Modul",
+    version="1.0.0",
+    router=router,
+    required_roles=["developer", "admin"],  # Rollenbasierter Zugriff
+    is_standalone=True,  # Eigenständig, keine Abhängigkeiten
+)
+```
+
+---
+
 ## 1. Übersicht
 
 Das Development-Modul ist das zentrale Werkzeug zur Entwicklung neuer Module und Features. Es kombiniert:
@@ -119,6 +315,132 @@ Diese Präferenzen MÜSSEN bei jeder Code-Generierung befolgt werden:
 ⚠️ Diese Präferenzen haben Vorrang vor allgemeinen Best Practices!
 """
 ```
+
+### User-Profil in Benutzereinstellungen (UI)
+
+Das User-Profil ist als **eigene Registerkarte** in den Benutzereinstellungen sichtbar, aber nur für Benutzer mit der Rolle `developer` oder `admin`.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         BENUTZEREINSTELLUNGEN                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌──────────────┬──────────────┬──────────────┬──────────────┐                  │
+│  │  Allgemein   │   Sicherheit │  Benachricht.│ ●Development │  ← Neue Tab     │
+│  └──────────────┴──────────────┴──────────────┴──────────────┘                  │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ ENTWICKLER-PRÄFERENZEN                                                   │    │
+│  ├─────────────────────────────────────────────────────────────────────────┤    │
+│  │                                                                          │    │
+│  │ Code-Stil                                                               │    │
+│  │ ─────────────────────────────────────────────────────────────           │    │
+│  │ Sprache für Code-Kommentare:    [Deutsch           ▾]                   │    │
+│  │ Sprache für VBA-Kommentare:     [Deutsch           ▾]                   │    │
+│  │ Namenskonvention:               [camelCase         ▾]                   │    │
+│  │ Fehlerbehandlung:               [Strukturiert (DE) ▾]                   │    │
+│  │                                                                          │    │
+│  │ LLM-Einstellungen                                                       │    │
+│  │ ─────────────────────────────────────────────────────────────           │    │
+│  │ Bevorzugter Provider:           [Anthropic Claude  ▾]                   │    │
+│  │ Max. Tokens pro Anfrage:        [8000              ]                    │    │
+│  │ Kreativität (Temperature):      [0.7               ]                    │    │
+│  │                                                                          │    │
+│  │ Benachrichtigungen                                                      │    │
+│  │ ─────────────────────────────────────────────────────────────           │    │
+│  │ [✓] Bei Fertigstellung benachrichtigen                                  │    │
+│  │ [✓] Bei Feedback-Anforderung benachrichtigen                            │    │
+│  │ [ ] E-Mail bei Session-Abschluss                                        │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                  │
+│  [Speichern]  [Zurücksetzen]                                                    │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rollenbasierter Zugriff
+
+```python
+# frontend/src/modules/development/components/UserProfileSettings.vue
+
+# Die Registerkarte wird nur angezeigt wenn:
+# 1. User hat Rolle "developer" ODER "admin"
+# 2. Development-Modul ist für den Tenant aktiviert
+
+def can_access_development_settings(user: User) -> bool:
+    return (
+        "developer" in user.roles or
+        "admin" in user.roles
+    )
+```
+
+### API-Endpoints für User-Profil
+
+```
+GET  /api/v1/development/profile              → Eigenes Profil abrufen
+PUT  /api/v1/development/profile              → Eigenes Profil aktualisieren
+GET  /api/v1/development/profile/defaults     → System-Defaults abrufen
+POST /api/v1/development/profile/reset        → Auf Defaults zurücksetzen
+
+# Nur für Admins:
+GET  /api/v1/development/profiles             → Alle Profile (Admin)
+GET  /api/v1/development/profiles/{user_id}   → Profil eines Users (Admin)
+PUT  /api/v1/development/profiles/{user_id}   → Profil eines Users ändern (Admin)
+```
+
+### Admin-Benutzer Setup
+
+Für die Ersteinrichtung wird der Benutzer `jan.riener` mit sämtlichen Rechten angelegt:
+
+```sql
+-- Admin-Benutzer anlegen (Passwort: admin123)
+INSERT INTO users (
+    id,
+    email,
+    username,
+    password_hash,
+    first_name,
+    last_name,
+    is_active,
+    is_superuser,
+    created_at
+) VALUES (
+    gen_random_uuid(),
+    'jan.riener@flowaudit.de',
+    'jan.riener',
+    -- bcrypt hash für 'admin123'
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.qUoXdJqZc1hZmS',
+    'Jan',
+    'Riener',
+    true,
+    true,  -- Superuser = alle Rechte
+    NOW()
+);
+
+-- Rollen zuweisen
+INSERT INTO user_roles (user_id, role_name) VALUES
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'admin'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'developer'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'auditor');
+
+-- Initiale Präferenzen setzen
+INSERT INTO user_profile (user_id, key, value, category) VALUES
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'code_language', 'de', 'code_style'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'vba_comments_language', 'de', 'code_style'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'naming_convention', 'camelCase', 'code_style'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'preferred_llm', 'anthropic', 'llm'),
+    ((SELECT id FROM users WHERE username = 'jan.riener'), 'ui_language', 'de', 'ui');
+```
+
+### Rollen-Übersicht
+
+| Rolle | Zugriff auf Development-Modul | User-Profil sichtbar |
+|-------|-------------------------------|----------------------|
+| `viewer` | ✗ Kein Zugriff | ✗ Tab nicht sichtbar |
+| `auditor` | ✗ Kein Zugriff | ✗ Tab nicht sichtbar |
+| `developer` | ✓ Voller Zugriff | ✓ Eigenes Profil |
+| `admin` | ✓ Voller Zugriff + Admin-Funktionen | ✓ Alle Profile |
 
 ---
 
