@@ -9,7 +9,7 @@
 | Deployment-Packaging | Mittel | 1 Woche |
 | Workflow-Historisierung | Hoch | 1.5 Wochen |
 | **Layer-Dashboard** | **Hoch** | **9-12 Wochen** |
-| **UI Enhancements (NEU)** | **Hoch** | **4-5 Wochen** |
+| **UI Enhancements** | **Hoch** | **3 Wochen** (Radial View ✅ fertig) |
 
 ---
 
@@ -893,62 +893,85 @@ Datei: frontend/src/components/common/CopyButton.vue
 
 ---
 
-### Phase 3: Radial View (Optional) (1-2 Wochen)
+### Phase 3: Radial View ✅ BEREITS IMPLEMENTIERT
 
-> **Hinweis:** Radial View ist eine optionale Alternative zum Standard-Layout.
-> Accessibility-Überlegungen beachten (Keyboard-Navigation, Screenreader).
+> **Status:** RadialView.vue ist vollständig implementiert in:
+> `apps/frontend/src/components/views/RadialView.vue`
 
-#### 6.3.1 D3.js Setup
+#### 6.3.1 Bereits vorhanden ✅
 ```
-Installation: pnpm add d3 @types/d3
+Datei: frontend/src/components/views/RadialView.vue (553 Zeilen)
 ```
-- [ ] D3 Dependency hinzufügen
-- [ ] `d3-helpers.ts` - Utility-Funktionen
+- [x] SVG-basierte Darstellung mit Orbit-Ringen
+- [x] Center Hub mit User-Avatar & Initialen
+- [x] 8 Module-Nodes im Kreis angeordnet
+- [x] Pulse-Ring Animationen (2 Ringe, verzögert)
+- [x] Connection Lines mit Glow-Effekt bei Hover
+- [x] Hover-Info-Panel mit Status, Version, Action-Button
+- [x] Color Picker mit 7 Presets (Lila, Blau, Cyan, Grün, Orange, Pink, Rot)
+- [x] Zoom Controls (50%-150%) mit Slider + Mausrad
+- [x] LocalStorage Persistenz (Zoom, Farbe)
+- [x] Parallax-Effekt bei Mausbewegung
+- [x] Status-Labels (Aktiv, Beta, Neu, Gesperrt)
+- [x] Integration mit usePreferences (animationsEnabled, hoverEffectsEnabled)
+- [x] Router-Links zu Modulen
 
-#### 6.3.2 Radial View Komponente
+#### 6.3.2 Export vorhanden ✅
 ```
-Datei: frontend/src/components/views/RadialView.vue
+Datei: frontend/src/components/views/index.ts
 ```
-- [ ] SVG-basierte Darstellung
-- [ ] Center Hub (Dashboard)
-- [ ] Orbit-Module im Kreis
-- [ ] Pulse-Rings Animation
-- [ ] Hover-Details Panel
-- [ ] Click-Navigation zu Modulen
-- [ ] Responsive Sizing
+- [x] TilesView, ListView, TreeView, RadialView, MinimalView exportiert
 
-#### 6.3.3 Module-Konfiguration
-- [ ] RadialNode Interface (id, name, icon, color, route, stats, status)
-- [ ] `calculateRadialPositions()` - Positions-Berechnung
-- [ ] Status-Farben (active, inactive, warning)
+#### 6.3.3 Noch zu tun (Integration)
+- [ ] Keyboard-Navigation für Accessibility (Tab durch Module)
+- [ ] ARIA-Labels für Screenreader
+- [ ] ViewSwitcher-Dropdown Integration (siehe Phase 4)
 
 ---
 
 ### Phase 4: View-Switcher Dropdown (0.5 Wochen)
 
-#### 6.4.1 Dropdown statt Icons
+> **Ziel:** Alle 5 vorhandenen Views über ein Dropdown auswählbar machen,
+> statt mehrerer Icons oben rechts.
+
+#### 6.4.1 Vorhandene Views (bereits exportiert)
+```
+Datei: frontend/src/components/views/index.ts
+```
+- [x] `TilesView` - Kachel-Ansicht
+- [x] `ListView` - Listen-Ansicht
+- [x] `TreeView` - Baum-Ansicht
+- [x] `RadialView` - Radial-Navigation ✅
+- [x] `MinimalView` - Minimale Ansicht
+
+#### 6.4.2 ViewSwitcher Dropdown erstellen
 ```
 Datei: frontend/src/components/common/ViewSwitcher.vue
 ```
 - [ ] Dropdown-Komponente für View-Auswahl
-- [ ] Views: Tabelle, Kacheln, Radial (optional)
+- [ ] Alle 5 Views als Optionen
 - [ ] Icon + Label pro Option
-- [ ] Keyboard-Navigation (Arrow Keys, Enter)
-- [ ] LocalStorage für View-Preference
+- [ ] Keyboard-Navigation (Arrow Keys, Enter, Escape)
+- [ ] LocalStorage für View-Preference pro Route
+- [ ] Tooltip mit Tastenkürzel (z.B. "T für Tabelle")
 
 ```vue
-<!-- Beispiel-Struktur -->
+<!-- Struktur -->
 <ViewSwitcher v-model="currentView">
-  <ViewOption value="table" icon="table" label="Tabelle" />
-  <ViewOption value="tiles" icon="grid" label="Kacheln" />
-  <ViewOption value="radial" icon="circle" label="Radial" v-if="radialEnabled" />
+  <ViewOption value="tiles" icon="grid-2x2" label="Kacheln" shortcut="K" />
+  <ViewOption value="list" icon="list" label="Liste" shortcut="L" />
+  <ViewOption value="tree" icon="git-branch" label="Baum" shortcut="B" />
+  <ViewOption value="radial" icon="circle-dot" label="Radial" shortcut="R" />
+  <ViewOption value="minimal" icon="minus" label="Minimal" shortcut="M" />
 </ViewSwitcher>
 ```
 
-#### 6.4.2 Integration in Views
+#### 6.4.3 Integration in Views
+- [ ] `DashboardView.vue` - ViewSwitcher im Header
 - [ ] `AuditCasesView.vue` - ViewSwitcher einbinden
 - [ ] `GroupQueriesView.vue` - ViewSwitcher einbinden
-- [ ] Header-Layout anpassen (weniger Icons rechts oben)
+- [ ] Header-Layout anpassen (1 Dropdown statt 5 Icons)
+- [ ] Icons oben rechts reduzieren
 
 ---
 
@@ -979,14 +1002,17 @@ Dateien: frontend/tests/
 
 ### UI Enhancements Zusammenfassung
 
-| Komponente | Aufwand | Priorität |
-|------------|---------|-----------|
-| Shimmer Loader | 1 Woche | Hoch |
-| Microinteractions | 1 Woche | Hoch |
-| Radial View | 1-2 Wochen | Niedrig (optional) |
-| View-Switcher Dropdown | 0.5 Wochen | Mittel |
-| Testing & Performance | 0.5 Wochen | Hoch |
-| **Gesamt** | **4-5 Wochen** | |
+| Komponente | Aufwand | Status |
+|------------|---------|--------|
+| Shimmer Loader | 1 Woche | ⬜ Offen |
+| Microinteractions | 1 Woche | ⬜ Offen |
+| Radial View | ~~1-2 Wochen~~ | ✅ **FERTIG** |
+| View-Switcher Dropdown | 0.5 Wochen | ⬜ Offen |
+| Testing & Performance | 0.5 Wochen | ⬜ Offen |
+| **Gesamt** | **3 Wochen** | |
+
+> **Hinweis:** Radial View ist bereits vollständig implementiert in
+> `apps/frontend/src/components/views/RadialView.vue` (553 Zeilen)
 
 ---
 
