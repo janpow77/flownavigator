@@ -1,6 +1,81 @@
 # FlowNavigator Layer-Struktur und Rollen
 
-## Architektur-Übersicht
+## Organisations-Layer (Mandanten-Hierarchie)
+
+Das System bildet eine hierarchische Organisationsstruktur ab:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SYSTEM-EBENE                                │
+│                   (system_admin)                                │
+│         Globaler Zugriff auf alle Konzerne & Behörden           │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+        ┌───────────────────┴───────────────────┐
+        │                                       │
+        ▼                                       ▼
+┌───────────────────────┐             ┌───────────────────────┐
+│      KONZERN A        │             │      KONZERN B        │
+│   (type="group")      │             │   (type="group")      │
+│    group_admin        │             │    group_admin        │
+└───────────┬───────────┘             └───────────┬───────────┘
+            │                                     │
+    ┌───────┴───────┐                     ┌───────┴───────┐
+    │               │                     │               │
+    ▼               ▼                     ▼               ▼
+┌─────────┐   ┌─────────┐           ┌─────────┐   ┌─────────┐
+│Prüf-    │   │Prüf-    │           │Prüf-    │   │Prüf-    │
+│behörde A│   │behörde B│           │behörde C│   │behörde D│
+│(auth.)  │   │(auth.)  │           │(auth.)  │   │(auth.)  │
+│authority│   │authority│           │authority│   │authority│
+│_head    │   │_head    │           │_head    │   │_head    │
+└────┬────┘   └────┬────┘           └────┬────┘   └────┬────┘
+     │             │                     │             │
+     ▼             ▼                     ▼             ▼
+┌─────────┐   ┌─────────┐           ┌─────────┐   ┌─────────┐
+│ Teams   │   │ Teams   │           │ Teams   │   │ Teams   │
+│team_    │   │team_    │           │team_    │   │team_    │
+│leader   │   │leader   │           │leader   │   │leader   │
+│auditor  │   │auditor  │           │auditor  │   │auditor  │
+│viewer   │   │viewer   │           │viewer   │   │viewer   │
+└─────────┘   └─────────┘           └─────────┘   └─────────┘
+```
+
+### Tenant-Modell (Datenbank)
+
+```python
+class Tenant:
+    id: UUID
+    name: str                    # z.B. "Bundesrechnungshof"
+    type: "group" | "authority"  # Konzern oder Prüfbehörde
+    parent_id: UUID | None       # Prüfbehörde → gehört zu Konzern
+    status: "active" | "suspended" | "trial"
+```
+
+**Beispiel-Hierarchie:**
+```
+Konzern "Bundesrepublik Deutschland" (type="group")
+├── Prüfbehörde "Bundesrechnungshof" (type="authority", parent_id=Konzern)
+├── Prüfbehörde "Landesrechnungshof Bayern" (type="authority", parent_id=Konzern)
+└── Prüfbehörde "Landesrechnungshof NRW" (type="authority", parent_id=Konzern)
+```
+
+---
+
+## Rollen pro Organisations-Layer
+
+| Organisations-Layer | Rollen | Zugriffs-Scope |
+|---------------------|--------|----------------|
+| **System** | `system_admin` | Alle Konzerne, alle Behörden, alle Daten |
+| **Konzern** | `group_admin` | Eigener Konzern + alle untergeordneten Prüfbehörden |
+| **Prüfbehörde** | `authority_head` | Nur eigene Prüfbehörde |
+| **Team** | `team_leader` | Zugewiesene Prüfungsfälle innerhalb der Behörde |
+| **Prüfer** | `auditor` | Nur zugewiesene Prüfungsfälle |
+| **Beobachter** | `viewer` | Lesezugriff auf eigene Behörde |
+
+---
+
+## Technische Architektur-Übersicht
 
 Das FlowNavigator-Projekt (FlowAudit Platform) ist als **Monorepo** mit einer klaren Schichtenarchitektur aufgebaut:
 
@@ -291,11 +366,48 @@ CREATE TYPE audit_case_status AS ENUM (
 
 ## Zusammenfassung: Welche Admins auf welchem Layer?
 
-| Layer | Erforderliche Rollen für Änderungen |
-|-------|-------------------------------------|
-| **Presentation** | Alle Rollen (Frontend zeigt/versteckt UI basierend auf Rolle) |
-| **Shared Packages** | Keine Authentifizierung (nur Bibliotheken) |
-| **API** | Abhängig vom Endpoint (siehe Tabelle oben) |
-| **Service** | `system_admin` für Konfiguration, andere für Business Logic |
-| **Data Access** | Automatische Tenant-Isolation für alle Rollen |
-| **Database** | Nur `system_admin` für direkte DB-Änderungen |
+### Organisations-Layer × Rollen Matrix
+
+```
+                    │ system │ group  │authority│ team   │        │
+                    │ _admin │ _admin │ _head   │_leader │auditor │viewer
+────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
+SYSTEM-EBENE        │  R/W   │   -    │    -    │   -    │   -    │  -
+────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
+KONZERN             │  R/W   │  R/W   │    -    │   -    │   -    │  -
+(type="group")      │        │        │         │        │        │
+────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
+PRÜFBEHÖRDE A       │  R/W   │  R/W   │   R/W   │   R    │   R    │  R
+(type="authority")  │        │        │         │        │        │
+────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
+PRÜFBEHÖRDE B       │  R/W   │  R/W   │   R/W   │   R    │   R    │  R
+(type="authority")  │        │        │         │        │        │
+────────────────────┼────────┼────────┼─────────┼────────┼────────┼──────
+PRÜFFALL            │  R/W   │  R/W   │   R/W   │  R/W   │  R/W   │  R
+(innerhalb Behörde) │        │        │         │        │(nur    │
+                    │        │        │         │        │zugewi.)│
+────────────────────┴────────┴────────┴─────────┴────────┴────────┴──────
+
+R = Lesen, W = Schreiben, - = Kein Zugriff
+```
+
+### Technische Layer × Rollen
+
+| Technischer Layer | system_admin | group_admin | authority_head | team_leader | auditor | viewer |
+|-------------------|:------------:|:-----------:|:--------------:|:-----------:|:-------:|:------:|
+| **Presentation** | Alles | Konzern-UI | Behörden-UI | Team-UI | Prüfer-UI | Nur-Lese-UI |
+| **API** | Alle Endpoints | Konzern-Endpoints | Behörden-Endpoints | Team-Endpoints | Prüf-Endpoints | GET only |
+| **Service** | Konfiguration | Reporting | Genehmigung | Zuweisung | Bearbeitung | - |
+| **Data Access** | Alle Tenants | Eigener Konzern | Eigene Behörde | Eigene Behörde | Eigene Behörde | Eigene Behörde |
+| **Database** | Direkt-Zugriff | Via API | Via API | Via API | Via API | Via API |
+
+### Wer verwaltet wen?
+
+| Rolle | Kann verwalten | Wird verwaltet von |
+|-------|----------------|-------------------|
+| `system_admin` | Alles (Konzerne, Behörden, Benutzer) | - |
+| `group_admin` | Behörden im Konzern, Benutzer | `system_admin` |
+| `authority_head` | Teams, Prüfer in der Behörde | `group_admin`, `system_admin` |
+| `team_leader` | Prüfungsfälle, Prüfer-Zuweisungen | `authority_head` |
+| `auditor` | Eigene Prüfungsfälle | `team_leader` |
+| `viewer` | Nichts (nur lesen) | `authority_head` |
