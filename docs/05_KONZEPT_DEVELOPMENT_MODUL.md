@@ -887,6 +887,449 @@ CREATE TABLE development_file_chunks (
 );
 ```
 
+### 3.4 Dokumenten-Parsing (Multi-Format-Extraktion)
+
+**Kernprinzip:** Alle hochgeladenen Dokumente werden automatisch geparst und in Text/strukturierte Daten umgewandelt, damit die LLM den Inhalt verarbeiten kann.
+
+#### Unterstützte Dateiformate
+
+| Format | Extension | Parser | Besonderheiten |
+|--------|-----------|--------|----------------|
+| **PDF** | `.pdf` | pdfplumber + PyMuPDF | Text + Tabellen, OCR für Scans |
+| **Word** | `.docx` | python-docx | Text, Tabellen, Formatierung |
+| **Word mit Makros** | `.docm` | python-docx + opc | VBA-Code wird extrahiert (Sicherheitsprüfung!) |
+| **Excel** | `.xlsx` | openpyxl | Sheets, Zellen, Formeln |
+| **Excel mit Makros** | `.xlsm` | openpyxl + oletools | VBA-Makros werden extrahiert |
+| **Bilder** | `.png`, `.jpg`, `.jpeg`, `.tiff`, `.bmp` | Tesseract OCR + Vision LLM | Text-Extraktion, Diagramm-Analyse |
+| **CSV/TSV** | `.csv`, `.tsv` | pandas | Strukturierte Daten |
+| **Markdown** | `.md` | Direkt | Keine Konvertierung nötig |
+| **Text** | `.txt` | Direkt | Keine Konvertierung nötig |
+
+#### Parser-Service Implementierung
+
+```python
+# apps/backend/app/services/development/document_parser.py
+
+from pathlib import Path
+from typing import Any
+import pdfplumber
+import pytesseract
+from PIL import Image
+from docx import Document
+from openpyxl import load_workbook
+from oletools.olevba import VBA_Parser
+import pandas as pd
+
+class DocumentParser:
+    """
+    Zentraler Service zum Parsen verschiedener Dokumentformate.
+    Extrahiert Text und strukturierte Daten für LLM-Verarbeitung.
+    """
+
+    SUPPORTED_EXTENSIONS = {
+        '.pdf': 'parse_pdf',
+        '.docx': 'parse_docx',
+        '.docm': 'parse_docm',
+        '.xlsx': 'parse_xlsx',
+        '.xlsm': 'parse_xlsm',
+        '.png': 'parse_image',
+        '.jpg': 'parse_image',
+        '.jpeg': 'parse_image',
+        '.tiff': 'parse_image',
+        '.bmp': 'parse_image',
+        '.csv': 'parse_csv',
+        '.tsv': 'parse_csv',
+        '.md': 'parse_text',
+        '.txt': 'parse_text',
+    }
+
+    async def parse(self, file_path: Path, mime_type: str | None = None) -> ParseResult:
+        """
+        Parst eine Datei und extrahiert Inhalt + Metadaten.
+        """
+        ext = file_path.suffix.lower()
+
+        if ext not in self.SUPPORTED_EXTENSIONS:
+            raise UnsupportedFormatError(f"Format {ext} wird nicht unterstützt")
+
+        parser_method = getattr(self, self.SUPPORTED_EXTENSIONS[ext])
+        return await parser_method(file_path)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PDF Parsing
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def parse_pdf(self, file_path: Path) -> ParseResult:
+        """
+        Parst PDF-Dateien.
+        - Normaler Text wird direkt extrahiert
+        - Gescannte PDFs werden mit OCR verarbeitet
+        - Tabellen werden strukturiert extrahiert
+        """
+        content_parts = []
+        tables = []
+        metadata = {"pages": 0, "has_images": False, "ocr_used": False}
+
+        with pdfplumber.open(file_path) as pdf:
+            metadata["pages"] = len(pdf.pages)
+
+            for page_num, page in enumerate(pdf.pages, 1):
+                # Text extrahieren
+                text = page.extract_text()
+
+                if text and len(text.strip()) > 50:
+                    content_parts.append(f"### Seite {page_num}\n{text}")
+                else:
+                    # Wenig Text → wahrscheinlich Scan → OCR
+                    img = page.to_image(resolution=300)
+                    ocr_text = pytesseract.image_to_string(
+                        img.original,
+                        lang='deu+eng'
+                    )
+                    if ocr_text.strip():
+                        content_parts.append(f"### Seite {page_num} (OCR)\n{ocr_text}")
+                        metadata["ocr_used"] = True
+
+                # Tabellen extrahieren
+                page_tables = page.extract_tables()
+                for table in page_tables:
+                    tables.append({
+                        "page": page_num,
+                        "data": table,
+                        "headers": table[0] if table else []
+                    })
+
+        return ParseResult(
+            content="\n\n".join(content_parts),
+            tables=tables,
+            metadata=metadata
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Word Parsing (docx/docm)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def parse_docx(self, file_path: Path) -> ParseResult:
+        """Parst Word-Dokumente (.docx)."""
+        doc = Document(file_path)
+
+        content_parts = []
+        tables = []
+
+        # Paragraphen extrahieren
+        for para in doc.paragraphs:
+            if para.text.strip():
+                # Überschriften erkennen
+                if para.style.name.startswith('Heading'):
+                    level = int(para.style.name[-1]) if para.style.name[-1].isdigit() else 1
+                    content_parts.append(f"{'#' * level} {para.text}")
+                else:
+                    content_parts.append(para.text)
+
+        # Tabellen extrahieren
+        for table in doc.tables:
+            table_data = []
+            for row in table.rows:
+                row_data = [cell.text for cell in row.cells]
+                table_data.append(row_data)
+            tables.append({"data": table_data, "headers": table_data[0] if table_data else []})
+
+        return ParseResult(
+            content="\n\n".join(content_parts),
+            tables=tables,
+            metadata={"paragraphs": len(doc.paragraphs), "tables": len(tables)}
+        )
+
+    async def parse_docm(self, file_path: Path) -> ParseResult:
+        """
+        Parst Word-Dokumente mit Makros (.docm).
+        SICHERHEIT: VBA-Code wird extrahiert aber NICHT ausgeführt!
+        """
+        # Erst normalen Inhalt parsen
+        result = await self.parse_docx(file_path)
+
+        # VBA-Makros extrahieren (nur für Analyse, nicht Ausführung!)
+        try:
+            vba_parser = VBA_Parser(str(file_path))
+            if vba_parser.detect_vba_macros():
+                macros = []
+                for (filename, stream_path, vba_filename, vba_code) in vba_parser.extract_macros():
+                    macros.append({
+                        "module": vba_filename,
+                        "code": vba_code,
+                        "stream": stream_path
+                    })
+                result.metadata["vba_macros"] = macros
+                result.metadata["has_macros"] = True
+
+                # SICHERHEITSWARNUNG
+                result.security_warnings.append(
+                    "Dokument enthält VBA-Makros. Code wurde extrahiert aber NICHT ausgeführt."
+                )
+            vba_parser.close()
+        except Exception as e:
+            result.metadata["vba_extraction_error"] = str(e)
+
+        return result
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Excel Parsing (xlsx/xlsm)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def parse_xlsx(self, file_path: Path) -> ParseResult:
+        """Parst Excel-Dateien (.xlsx)."""
+        wb = load_workbook(file_path, data_only=True)
+
+        sheets = []
+        content_parts = []
+
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+
+            # Daten als 2D-Array
+            data = []
+            for row in ws.iter_rows(values_only=True):
+                if any(cell is not None for cell in row):
+                    data.append([str(cell) if cell is not None else "" for cell in row])
+
+            if data:
+                sheets.append({
+                    "name": sheet_name,
+                    "data": data,
+                    "headers": data[0] if data else [],
+                    "row_count": len(data),
+                    "col_count": len(data[0]) if data else 0
+                })
+
+                # Auch als Markdown-Tabelle für LLM
+                content_parts.append(f"## Sheet: {sheet_name}\n")
+                content_parts.append(self._data_to_markdown_table(data[:100]))  # Max 100 Zeilen
+
+        wb.close()
+
+        return ParseResult(
+            content="\n\n".join(content_parts),
+            tables=sheets,
+            metadata={
+                "sheet_count": len(sheets),
+                "sheets": [s["name"] for s in sheets]
+            }
+        )
+
+    async def parse_xlsm(self, file_path: Path) -> ParseResult:
+        """
+        Parst Excel-Dateien mit Makros (.xlsm).
+        SICHERHEIT: VBA-Code wird extrahiert aber NICHT ausgeführt!
+        """
+        # Erst normalen Inhalt parsen
+        result = await self.parse_xlsx(file_path)
+
+        # VBA-Makros extrahieren
+        try:
+            vba_parser = VBA_Parser(str(file_path))
+            if vba_parser.detect_vba_macros():
+                macros = []
+                for (filename, stream_path, vba_filename, vba_code) in vba_parser.extract_macros():
+                    macros.append({
+                        "module": vba_filename,
+                        "code": vba_code
+                    })
+                result.metadata["vba_macros"] = macros
+                result.metadata["has_macros"] = True
+
+                # VBA-Code auch als Content anhängen (für LLM-Analyse)
+                if macros:
+                    result.content += "\n\n## VBA-Makros\n"
+                    for macro in macros:
+                        result.content += f"\n### {macro['module']}\n```vba\n{macro['code']}\n```\n"
+
+                result.security_warnings.append(
+                    "Excel enthält VBA-Makros. Code wurde extrahiert aber NICHT ausgeführt."
+                )
+            vba_parser.close()
+        except Exception as e:
+            result.metadata["vba_extraction_error"] = str(e)
+
+        return result
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Bild-Parsing (OCR + Vision)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def parse_image(self, file_path: Path) -> ParseResult:
+        """
+        Parst Bilder mit OCR und optional Vision-LLM.
+        - Tesseract für Text-Extraktion
+        - Vision-LLM (z.B. Claude Vision) für Diagramme/Charts
+        """
+        img = Image.open(file_path)
+
+        # Basis-Metadaten
+        metadata = {
+            "width": img.width,
+            "height": img.height,
+            "format": img.format,
+            "mode": img.mode
+        }
+
+        content_parts = []
+
+        # OCR für Text-Extraktion
+        ocr_text = pytesseract.image_to_string(img, lang='deu+eng')
+        if ocr_text.strip():
+            content_parts.append(f"## Extrahierter Text (OCR)\n{ocr_text}")
+            metadata["ocr_text_length"] = len(ocr_text)
+
+        # Prüfen ob Bild ein Diagramm/Chart sein könnte
+        if self._might_be_diagram(img):
+            metadata["possible_diagram"] = True
+            # Vision-LLM für Diagramm-Analyse
+            vision_analysis = await self._analyze_with_vision_llm(file_path)
+            if vision_analysis:
+                content_parts.append(f"## Bildanalyse (Vision-KI)\n{vision_analysis}")
+
+        return ParseResult(
+            content="\n\n".join(content_parts) if content_parts else "(Kein Text erkannt)",
+            metadata=metadata,
+            raw_image_path=str(file_path)  # Für LLM mit Vision-Support
+        )
+
+    async def _analyze_with_vision_llm(self, image_path: Path) -> str | None:
+        """Analysiert Bild mit Vision-fähigem LLM."""
+        try:
+            # Claude Vision oder GPT-4 Vision
+            response = await self.llm_service.analyze_image(
+                image_path=image_path,
+                prompt="""Analysiere dieses Bild. Falls es ein Diagramm, Flowchart,
+                Architektur-Diagramm oder technische Zeichnung ist, beschreibe:
+                1. Was zeigt das Diagramm?
+                2. Welche Komponenten/Elemente sind sichtbar?
+                3. Wie sind diese verbunden/strukturiert?
+                Falls es Text enthält, extrahiere diesen."""
+            )
+            return response
+        except Exception:
+            return None
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CSV/TSV Parsing
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def parse_csv(self, file_path: Path) -> ParseResult:
+        """Parst CSV/TSV-Dateien."""
+        # Separator automatisch erkennen
+        sep = '\t' if file_path.suffix == '.tsv' else ','
+
+        df = pd.read_csv(file_path, sep=sep, nrows=1000)  # Max 1000 Zeilen
+
+        # Als Markdown-Tabelle
+        content = df.to_markdown(index=False)
+
+        return ParseResult(
+            content=content,
+            tables=[{
+                "data": df.values.tolist(),
+                "headers": df.columns.tolist(),
+                "row_count": len(df),
+                "col_count": len(df.columns)
+            }],
+            metadata={
+                "columns": df.columns.tolist(),
+                "dtypes": df.dtypes.astype(str).to_dict(),
+                "row_count": len(df)
+            }
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Hilfsmethoden
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _data_to_markdown_table(self, data: list[list[str]]) -> str:
+        """Konvertiert 2D-Array zu Markdown-Tabelle."""
+        if not data:
+            return ""
+
+        # Header
+        header = "| " + " | ".join(data[0]) + " |"
+        separator = "| " + " | ".join(["---"] * len(data[0])) + " |"
+
+        # Rows
+        rows = [
+            "| " + " | ".join(row) + " |"
+            for row in data[1:50]  # Max 50 Zeilen
+        ]
+
+        if len(data) > 50:
+            rows.append(f"*... und {len(data) - 50} weitere Zeilen*")
+
+        return "\n".join([header, separator] + rows)
+
+
+@dataclass
+class ParseResult:
+    """Ergebnis des Dokumenten-Parsings."""
+    content: str                      # Extrahierter Text (Markdown-formatiert)
+    tables: list[dict] = field(default_factory=list)  # Strukturierte Tabellen
+    metadata: dict = field(default_factory=dict)       # Format-spezifische Metadaten
+    security_warnings: list[str] = field(default_factory=list)
+    raw_image_path: str | None = None  # Für Vision-LLM
+```
+
+#### Sicherheits-Hinweise für Makro-Dateien
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  ⚠️ SICHERHEIT BEI MAKRO-DATEIEN (.docm, .xlsm)                                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  1. VBA-Makros werden NUR EXTRAHIERT, niemals ausgeführt!                       │
+│                                                                                  │
+│  2. Makro-Code wird an die LLM übergeben zur Analyse:                           │
+│     - Erkennung von potenziell gefährlichem Code                               │
+│     - Dokumentation der Makro-Funktionalität                                   │
+│     - Vorschläge zur Konvertierung in Python/TypeScript                         │
+│                                                                                  │
+│  3. Bei verdächtigem Code wird gewarnt:                                         │
+│     - Shell-Aufrufe (Shell(), WScript.Shell)                                   │
+│     - Datei-Operationen außerhalb des Dokuments                                │
+│     - Netzwerk-Zugriffe                                                         │
+│     - Registry-Zugriffe                                                         │
+│                                                                                  │
+│  4. Sandbox-Modus verfügbar für besonders sensible Umgebungen                   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Dependencies für Parser
+
+```txt
+# In requirements.txt hinzufügen:
+
+# PDF
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+
+# Word
+python-docx>=1.1.0
+
+# Excel
+openpyxl>=3.1.0
+
+# Makro-Analyse
+oletools>=0.60.0
+
+# OCR
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# CSV/Daten
+pandas>=2.0.0
+tabulate>=0.9.0  # für to_markdown
+
+# Zusätzlich System-Package:
+# apt-get install tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+```
+
 ---
 
 ## 4. Phase 3: Aufgabe beschreiben

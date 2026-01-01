@@ -265,7 +265,48 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.2 Feedback-Service
+### 3.2 Document-Parser-Service
+
+**Datei:** `apps/backend/app/services/development/document_parser.py`
+
+**Anforderungen:**
+- [ ] `parse()` - Hauptmethode, erkennt Format automatisch
+- [ ] `parse_pdf()` - PDF mit pdfplumber, OCR für Scans
+- [ ] `parse_docx()` - Word-Dokumente
+- [ ] `parse_docm()` - Word mit Makros (VBA extrahieren, nicht ausführen!)
+- [ ] `parse_xlsx()` - Excel-Dateien
+- [ ] `parse_xlsm()` - Excel mit Makros (VBA extrahieren)
+- [ ] `parse_image()` - OCR mit Tesseract + Vision-LLM für Diagramme
+- [ ] `parse_csv()` - CSV/TSV mit pandas
+
+**Dependencies:**
+```txt
+pdfplumber>=0.10.0
+PyMuPDF>=1.23.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+oletools>=0.60.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+pandas>=2.0.0
+tabulate>=0.9.0
+```
+
+**System-Requirement:**
+```bash
+apt-get install tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+```
+
+**Erfolgskriterium:**
+- PDF mit Text → Text extrahiert
+- Gescannte PDF → OCR-Text extrahiert
+- XLSX mit mehreren Sheets → Alle Sheets als Markdown-Tabellen
+- XLSM → VBA-Code extrahiert, Sicherheitswarnung angezeigt
+- Bild mit Text → OCR-Text extrahiert
+
+---
+
+### 3.3 Feedback-Service
 
 **Datei:** `apps/backend/app/services/development/feedback_service.py`
 
@@ -278,7 +319,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.3 Architecture-Scanner Service
+### 3.4 Architecture-Scanner Service
 
 **Datei:** `apps/backend/app/services/development/architecture_scanner.py`
 
@@ -292,7 +333,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.4 Consistency-Checker Service
+### 3.5 Consistency-Checker Service
 
 **Datei:** `apps/backend/app/services/development/consistency_checker.py`
 
@@ -306,7 +347,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.5 LLM-Orchestrator Service
+### 3.6 LLM-Orchestrator Service
 
 **Datei:** `apps/backend/app/services/development/llm_orchestrator.py`
 
@@ -319,7 +360,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.6 Licensing-Service
+### 3.7 Licensing-Service
 
 **Datei:** `apps/backend/app/services/licensing_service.py`
 
@@ -332,7 +373,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.7 i18n-Service
+### 3.8 i18n-Service
 
 **Datei:** `apps/backend/app/services/i18n_service.py`
 
@@ -346,7 +387,7 @@ WHERE username = 'jan.riener';
 
 ---
 
-### 3.8 UI-Config-Service
+### 3.9 UI-Config-Service
 
 **Datei:** `apps/backend/app/services/ui_config_service.py`
 
