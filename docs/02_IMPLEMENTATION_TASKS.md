@@ -8,7 +8,8 @@
 | Admin-Dashboard | Mittel | 2 Wochen |
 | Deployment-Packaging | Mittel | 1 Woche |
 | Workflow-Historisierung | Hoch | 1.5 Wochen |
-| **Layer-Dashboard (NEU)** | **Hoch** | **9-12 Wochen** |
+| **Layer-Dashboard** | **Hoch** | **9-12 Wochen** |
+| **UI Enhancements (NEU)** | **Hoch** | **4-5 Wochen** |
 
 ---
 
@@ -795,4 +796,211 @@ Beginne mit Phase 1:
 2. Customer-Modell mit Lizenz-Tracking erstellen
 3. Profile-Modelle für CB und Authority erstellen
 4. Alembic-Migrationen generieren
+```
+
+---
+
+## 6. UI Enhancements - Shimmer Loader, Microinteractions & Radial View
+
+### Ziel
+Moderne, interaktive und performante UI-Komponenten für bessere User Experience:
+- **Shimmer Loader** - Perceived Performance verbessern
+- **Microinteractions** - Visuelles Feedback bei Aktionen
+- **Radial View** - Alternative Navigation (optional)
+- **View-Switcher als Dropdown** - Reduzierte Icon-Komplexität
+
+---
+
+### Phase 1: Shimmer Loader & Skeleton Screens (1 Woche)
+
+#### 6.1.1 CSS Animations
+```
+Datei: frontend/src/styles/themes.css
+```
+- [ ] `@keyframes shimmer` - Basis-Animation
+- [ ] `@keyframes pulse-subtle` - Alternative Pulse-Animation
+- [ ] `@keyframes skeleton-wave` - Wave-Effekt
+- [ ] `.skeleton`, `.skeleton-wave`, `.skeleton-pulse` - Basis-Klassen
+- [ ] `.skeleton-text`, `.skeleton-avatar`, `.skeleton-box`, `.skeleton-card` - Varianten
+- [ ] `@media (prefers-reduced-motion)` - Accessibility
+
+#### 6.1.2 Skeleton Komponenten
+```
+Verzeichnis: frontend/src/components/common/
+```
+- [ ] `SkeletonLoader.vue` - Basis-Komponente (type, size, variant props)
+- [ ] `SkeletonTable.vue` - Tabellen-Skeleton mit Header/Rows
+- [ ] `SkeletonCard.vue` - Karten-Skeleton (Grid/List Layout)
+- [ ] `SkeletonStats.vue` - Dashboard-Statistiken
+
+#### 6.1.3 View-Integration
+```
+Dateien: frontend/src/views/
+```
+- [ ] `AuditCasesView.vue` - Skeleton während Laden
+- [ ] `DashboardView.vue` - Stats & Cards Skeleton
+- [ ] `GroupQueriesView.vue` - Listen-Skeleton
+- [ ] Delayed Skeleton (erst nach 200ms anzeigen für schnelle Requests)
+
+---
+
+### Phase 2: Microinteractions (1 Woche)
+
+#### 6.2.1 Button Feedbacks
+```
+Dateien: frontend/src/composables/
+```
+- [ ] `useRipple.ts` - Ripple-Effekt Composable
+- [ ] `useButtonState.ts` - Loading/Success/Error States
+- [ ] `@keyframes ripple` - CSS Animation
+
+#### 6.2.2 Enhanced Button Component
+```
+Datei: frontend/src/components/common/EnhancedButton.vue
+```
+- [ ] Props: variant, size, loading, success, error, ripple
+- [ ] Spinner während Loading
+- [ ] Checkmark bei Success (mit Animation)
+- [ ] Shake bei Error
+- [ ] `transform: scale(0.97)` bei :active
+
+#### 6.2.3 Input Validierung
+```
+Datei: frontend/src/components/common/ValidatedInput.vue
+```
+- [ ] Real-time Validierung
+- [ ] Success/Error Icons mit Pop-Animation
+- [ ] Shake-Animation bei Fehler
+- [ ] Error-Message mit Slide-Down
+
+#### 6.2.4 Toast Notifications
+```
+Dateien: frontend/src/components/common/
+```
+- [ ] `Toast.vue` - Einzelne Toast-Komponente
+- [ ] `ToastContainer.vue` - Container mit Teleport
+- [ ] `useToast.ts` - Composable (success, error, info, warning)
+- [ ] Progress-Bar für Auto-Dismiss
+- [ ] Positions: top-right, top-left, bottom-right, bottom-left
+
+#### 6.2.5 Copy-to-Clipboard
+```
+Datei: frontend/src/components/common/CopyButton.vue
+```
+- [ ] Icon-Switch Animation (Copy → Check)
+- [ ] Toast-Integration
+- [ ] Sizes: sm, md, lg
+
+---
+
+### Phase 3: Radial View (Optional) (1-2 Wochen)
+
+> **Hinweis:** Radial View ist eine optionale Alternative zum Standard-Layout.
+> Accessibility-Überlegungen beachten (Keyboard-Navigation, Screenreader).
+
+#### 6.3.1 D3.js Setup
+```
+Installation: pnpm add d3 @types/d3
+```
+- [ ] D3 Dependency hinzufügen
+- [ ] `d3-helpers.ts` - Utility-Funktionen
+
+#### 6.3.2 Radial View Komponente
+```
+Datei: frontend/src/components/views/RadialView.vue
+```
+- [ ] SVG-basierte Darstellung
+- [ ] Center Hub (Dashboard)
+- [ ] Orbit-Module im Kreis
+- [ ] Pulse-Rings Animation
+- [ ] Hover-Details Panel
+- [ ] Click-Navigation zu Modulen
+- [ ] Responsive Sizing
+
+#### 6.3.3 Module-Konfiguration
+- [ ] RadialNode Interface (id, name, icon, color, route, stats, status)
+- [ ] `calculateRadialPositions()` - Positions-Berechnung
+- [ ] Status-Farben (active, inactive, warning)
+
+---
+
+### Phase 4: View-Switcher Dropdown (0.5 Wochen)
+
+#### 6.4.1 Dropdown statt Icons
+```
+Datei: frontend/src/components/common/ViewSwitcher.vue
+```
+- [ ] Dropdown-Komponente für View-Auswahl
+- [ ] Views: Tabelle, Kacheln, Radial (optional)
+- [ ] Icon + Label pro Option
+- [ ] Keyboard-Navigation (Arrow Keys, Enter)
+- [ ] LocalStorage für View-Preference
+
+```vue
+<!-- Beispiel-Struktur -->
+<ViewSwitcher v-model="currentView">
+  <ViewOption value="table" icon="table" label="Tabelle" />
+  <ViewOption value="tiles" icon="grid" label="Kacheln" />
+  <ViewOption value="radial" icon="circle" label="Radial" v-if="radialEnabled" />
+</ViewSwitcher>
+```
+
+#### 6.4.2 Integration in Views
+- [ ] `AuditCasesView.vue` - ViewSwitcher einbinden
+- [ ] `GroupQueriesView.vue` - ViewSwitcher einbinden
+- [ ] Header-Layout anpassen (weniger Icons rechts oben)
+
+---
+
+### Phase 5: Testing & Performance (0.5 Wochen)
+
+#### 6.5.1 Performance-Optimierung
+- [ ] `will-change: transform` für Animationen
+- [ ] `transform` statt `left/top` für GPU-Beschleunigung
+- [ ] Debounce für Resize-Events
+- [ ] Lazy-Load für D3.js (nur bei Radial View)
+
+#### 6.5.2 Accessibility
+- [ ] `prefers-reduced-motion` respektieren
+- [ ] ARIA-Labels für Skeleton-Loader
+- [ ] Keyboard-Navigation für Radial View
+- [ ] Focus-States für alle interaktiven Elemente
+
+#### 6.5.3 Tests
+```
+Dateien: frontend/tests/
+```
+- [ ] `SkeletonLoader.spec.ts` - Unit Tests
+- [ ] `Toast.spec.ts` - Toast Composable Tests
+- [ ] `EnhancedButton.spec.ts` - Button States
+- [ ] E2E: Shimmer während Laden sichtbar
+
+---
+
+### UI Enhancements Zusammenfassung
+
+| Komponente | Aufwand | Priorität |
+|------------|---------|-----------|
+| Shimmer Loader | 1 Woche | Hoch |
+| Microinteractions | 1 Woche | Hoch |
+| Radial View | 1-2 Wochen | Niedrig (optional) |
+| View-Switcher Dropdown | 0.5 Wochen | Mittel |
+| Testing & Performance | 0.5 Wochen | Hoch |
+| **Gesamt** | **4-5 Wochen** | |
+
+---
+
+## Befehl für UI Enhancements
+
+Um mit den UI Enhancements zu beginnen:
+
+```
+Implementiere die UI Enhancements basierend auf dem Plan in
+docs/02_IMPLEMENTATION_TASKS.md (Abschnitt 6).
+
+Beginne mit Phase 1:
+1. Shimmer CSS Animations in themes.css
+2. SkeletonLoader.vue Basis-Komponente
+3. SkeletonTable.vue für Tabellen-Views
+4. Integration in AuditCasesView.vue
 ```
