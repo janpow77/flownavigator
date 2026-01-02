@@ -9,8 +9,6 @@ from slowapi.middleware import SlowAPIMiddleware
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
-
 # Disable rate limiting in tests (SlowAPIMiddleware uses BaseHTTPMiddleware
 # which has known issues with async tests)
 TESTING = os.getenv("TESTING", "").lower() == "true"

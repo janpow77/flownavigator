@@ -1,6 +1,5 @@
 """Profile API endpoints for Layer 1 and Layer 2."""
 
-from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status

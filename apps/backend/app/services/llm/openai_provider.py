@@ -12,7 +12,6 @@ from app.services.llm.base import (
     BaseLLMProvider,
     LLMMessage,
     LLMResponse,
-    MessageRole,
     StreamChunk,
 )
 

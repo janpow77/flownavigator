@@ -109,10 +109,10 @@ async def create_llm_config(
     # If this is default, unset other defaults
     if config.is_default:
         await db.execute(
-            select(LLMConfiguration).where(LLMConfiguration.is_default == True)
+            select(LLMConfiguration).where(LLMConfiguration.is_default.is_(True))
         )
         result = await db.execute(
-            select(LLMConfiguration).where(LLMConfiguration.is_default == True)
+            select(LLMConfiguration).where(LLMConfiguration.is_default.is_(True))
         )
         for existing in result.scalars():
             existing.is_default = False
@@ -263,10 +263,13 @@ async def list_templates(
     query = select(ModuleTemplate)
 
     # Filter by tenant or public
-    query = query.where(
-        (ModuleTemplate.tenant_id == current_user.tenant_id)
-        | (ModuleTemplate.is_public == True if include_public else False)
-    )
+    if include_public:
+        query = query.where(
+            (ModuleTemplate.tenant_id == current_user.tenant_id)
+            | (ModuleTemplate.is_public.is_(True))
+        )
+    else:
+        query = query.where(ModuleTemplate.tenant_id == current_user.tenant_id)
 
     if module_type:
         query = query.where(ModuleTemplate.module_type == module_type)
@@ -462,7 +465,7 @@ async def _run_conversion_background(
         service = ModuleConverterService(db)
         try:
             await service.execute_conversion(conversion_id, github_integration_id)
-        except Exception as e:
+        except Exception:
             # Error is already logged and saved in the service
             pass
 
@@ -627,7 +630,7 @@ async def list_github_integrations(
         (GitHubIntegration.tenant_id == current_user.tenant_id)
         | (GitHubIntegration.tenant_id.is_(None))
     )
-    query = query.where(GitHubIntegration.is_active == True)
+    query = query.where(GitHubIntegration.is_active.is_(True))
 
     result = await db.execute(query)
     integrations = result.scalars().all()

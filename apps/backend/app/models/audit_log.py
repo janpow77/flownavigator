@@ -1,10 +1,9 @@
 """Audit Log model for tracking changes."""
 
-from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text
+from sqlalchemy import Enum, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -93,4 +92,4 @@ class AuditLog(Base, TimestampMixin):
 
 
 # Import at the end to avoid circular imports
-from app.models.user import User
+from app.models.user import User  # noqa: E402, F401

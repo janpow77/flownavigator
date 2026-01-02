@@ -1,10 +1,9 @@
 """Base model classes and mixins."""
 
 from datetime import datetime, timezone
-from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

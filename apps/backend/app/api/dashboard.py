@@ -1,12 +1,10 @@
 """Dashboard API endpoints for Layer Dashboard."""
 
 from datetime import date, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.user import User
@@ -89,7 +87,7 @@ async def get_authority_summary(tenant: Tenant, db: AsyncSession) -> AuthoritySu
     result = await db.execute(
         select(func.count(User.id)).where(
             User.tenant_id == tenant.id,
-            User.is_active == True,
+            User.is_active.is_(True),
         )
     )
     user_count = result.scalar() or 0
@@ -108,7 +106,7 @@ async def get_authority_summary(tenant: Tenant, db: AsyncSession) -> AuthoritySu
         select(User).where(
             User.tenant_id == tenant.id,
             User.role == "authority_head",
-            User.is_active == True,
+            User.is_active.is_(True),
         )
     )
     head = result.scalar_one_or_none()
@@ -354,7 +352,7 @@ async def get_authority_detail(
     result = await db.execute(
         select(User).where(
             User.tenant_id == authority_id,
-            User.is_active == True,
+            User.is_active.is_(True),
         )
     )
     users = result.scalars().all()

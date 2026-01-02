@@ -1,6 +1,6 @@
 """Audit Case models - Prüfungsfälle."""
 
-from datetime import datetime, date, timezone
+from datetime import datetime, date
 from decimal import Decimal
 from uuid import uuid4
 

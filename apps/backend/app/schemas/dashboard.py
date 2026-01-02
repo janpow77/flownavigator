@@ -1,6 +1,5 @@
 """Dashboard schemas for Layer Dashboard."""
 
-from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 

@@ -4,12 +4,11 @@ This service builds context for LLM conversations based on the context type.
 """
 
 from typing import Any, Optional
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.history import LLMConversation, LLMMessage
+from app.models.history import LLMMessage
 from app.models.audit_case import AuditCase, AuditCaseChecklist, AuditCaseFinding
 from app.schemas.history import ContextResponse, LLMMessageResponse
 

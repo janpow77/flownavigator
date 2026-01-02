@@ -1,14 +1,13 @@
 """Vendor API endpoints for Layer 0."""
 
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload  # noqa: F401
 
 from app.core.database import get_db
 from app.core.security import (
@@ -19,14 +18,12 @@ from app.core.security import (
 )
 from app.models.vendor import Vendor, VendorUser, VendorRole
 from app.schemas.vendor import (
-    VendorCreate,
     VendorUpdate,
     VendorResponse,
     VendorUserCreate,
     VendorUserUpdate,
     VendorUserResponse,
     VendorUserListResponse,
-    VendorWithUsersResponse,
 )
 from app.schemas.auth import Token
 

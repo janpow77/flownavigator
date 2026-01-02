@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,6 @@ from app.schemas.checklist import (
     ChecklistTemplateUpdate,
     ChecklistTemplateResponse,
     ChecklistTemplateListResponse,
-    ChecklistTemplateSummary,
     ChecklistCreateFromTemplate,
     ChecklistResponseUpdate,
     ChecklistInstanceResponse,
@@ -43,7 +42,7 @@ async def list_templates(
     """List checklist templates."""
     query = select(ChecklistTemplate).where(
         ChecklistTemplate.tenant_id == current_user.tenant_id,
-        ChecklistTemplate.is_current == True,
+        ChecklistTemplate.is_current.is_(True),
     )
 
     if checklist_type:
@@ -115,7 +114,7 @@ async def create_default_templates(
     existing = await db.execute(
         select(ChecklistTemplate)
         .where(ChecklistTemplate.tenant_id == current_user.tenant_id)
-        .where(ChecklistTemplate.is_current == True)
+        .where(ChecklistTemplate.is_current.is_(True))
     )
     existing_types = {t.checklist_type for t in existing.scalars().all()}
 

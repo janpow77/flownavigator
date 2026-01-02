@@ -3,12 +3,9 @@
 import logging
 import sys
 import uuid
-from typing import Any, Callable
 
 import structlog
 from structlog.types import Processor
-from starlette.requests import Request
-from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import settings

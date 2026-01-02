@@ -30,7 +30,6 @@ from app.schemas.module import (
     ModuleUpdate,
     ModuleResponse,
     ModuleListResponse,
-    ModuleDeploymentCreate,
     ModuleDeploymentResponse,
     ModuleDeploymentListResponse,
     ReleaseNoteCreate,

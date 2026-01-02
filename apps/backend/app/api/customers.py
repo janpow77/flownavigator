@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.models.vendor import VendorUser, VendorRole
+from app.models.vendor import VendorUser
 from app.models.customer import Customer, CustomerStatus, LicenseUsage, LicenseAlert
 from app.models.tenant import Tenant
 from app.api.vendor import get_current_vendor_user, require_vendor_admin
@@ -412,7 +412,7 @@ async def get_license_alerts(
 
     query = select(LicenseAlert).where(LicenseAlert.customer_id == customer_id)
     if not include_acknowledged:
-        query = query.where(LicenseAlert.acknowledged == False)
+        query = query.where(LicenseAlert.acknowledged.is_(False))
 
     result = await db.execute(query.order_by(LicenseAlert.created_at.desc()))
     alerts = result.scalars().all()

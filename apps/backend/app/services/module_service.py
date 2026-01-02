@@ -4,7 +4,6 @@ Orchestrates the entire module conversion process including
 analysis, LLM-based conversion, validation, and staging.
 """
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -17,12 +16,10 @@ from app.models.module_converter import (
     ConversionStatus,
     ConversionStep,
     GitHubIntegration,
-    LLMConfiguration,
     ModuleConversionLog,
     ModuleTemplate,
 )
 from app.services.github_service import (
-    GitHubService,
     create_github_service_from_integration,
 )
 from app.services.llm import LLMService, LLMMessage
@@ -670,12 +667,17 @@ Please generate the converted code."""
         """List available templates."""
         query = (
             select(ModuleTemplate)
-            .where(
-                (ModuleTemplate.tenant_id == tenant_id)
-                | (ModuleTemplate.is_public == True if include_public else False)
-            )
-            .where(ModuleTemplate.is_active == True)
         )
+
+        if include_public:
+            query = query.where(
+                (ModuleTemplate.tenant_id == tenant_id)
+                | (ModuleTemplate.is_public.is_(True))
+            )
+        else:
+            query = query.where(ModuleTemplate.tenant_id == tenant_id)
+
+        query = query.where(ModuleTemplate.is_active.is_(True))
 
         result = await self.db.execute(query)
         return list(result.scalars().all())

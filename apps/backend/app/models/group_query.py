@@ -1,9 +1,9 @@
 """Group Query models - Konzern-Abfragen."""
 
 from datetime import datetime
-from uuid import uuid4
+from typing import TYPE_CHECKING  # noqa: F401
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

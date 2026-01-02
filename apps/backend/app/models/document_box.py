@@ -1,9 +1,9 @@
 """Document Box models - Belegkasten."""
 
 from datetime import datetime
-from uuid import uuid4
+from typing import TYPE_CHECKING  # noqa: F401
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

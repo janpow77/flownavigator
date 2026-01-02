@@ -4,7 +4,7 @@ Diese Models unterstützen die Konvertierung von Modulen zwischen verschiedenen
 Formaten und die Verwaltung von LLM-Konfigurationen.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum as PyEnum
 from typing import Any
 from uuid import uuid4

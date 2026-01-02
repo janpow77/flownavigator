@@ -5,15 +5,14 @@ Main service for interacting with LLM providers with fallback support.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
 from typing import Any, AsyncIterator
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.module_converter import LLMConfiguration, LLMProvider
-from app.services.llm.base import BaseLLMProvider, LLMMessage, LLMResponse, StreamChunk
-from app.services.llm.factory import LLMProviderFactory, LLMProviderError
+from app.models.module_converter import LLMConfiguration
+from app.services.llm.base import LLMMessage, LLMResponse, StreamChunk
+from app.services.llm.factory import LLMProviderFactory
 
 
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ class LLMService:
             result = await self.db.execute(
                 select(LLMConfiguration)
                 .where(LLMConfiguration.id == config_id)
-                .where(LLMConfiguration.is_active == True)
+                .where(LLMConfiguration.is_active.is_(True))
             )
             config = result.scalar_one_or_none()
             if not config:
@@ -84,7 +83,7 @@ class LLMService:
         # Get all active configurations ordered by priority
         result = await self.db.execute(
             select(LLMConfiguration)
-            .where(LLMConfiguration.is_active == True)
+            .where(LLMConfiguration.is_active.is_(True))
             .order_by(LLMConfiguration.priority.asc())
         )
         configs = list(result.scalars().all())
@@ -313,7 +312,7 @@ class LLMService:
         """Get the default LLM configuration."""
         result = await self.db.execute(
             select(LLMConfiguration)
-            .where(LLMConfiguration.is_default == True)
-            .where(LLMConfiguration.is_active == True)
+            .where(LLMConfiguration.is_default.is_(True))
+            .where(LLMConfiguration.is_active.is_(True))
         )
         return result.scalar_one_or_none()
