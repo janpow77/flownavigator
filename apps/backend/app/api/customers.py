@@ -121,7 +121,9 @@ async def get_customer(
     """Get customer details with license information."""
     result = await db.execute(
         select(Customer)
-        .options(selectinload(Customer.license_usages), selectinload(Customer.license_alerts))
+        .options(
+            selectinload(Customer.license_usages), selectinload(Customer.license_alerts)
+        )
         .where(
             Customer.id == customer_id,
             Customer.vendor_id == current_user.vendor_id,
@@ -137,21 +139,35 @@ async def get_customer(
 
     # Calculate current usage
     today = date.today()
-    current_usage = next(
-        (u for u in customer.license_usages if u.date == today),
-        None
-    )
+    current_usage = next((u for u in customer.license_usages if u.date == today), None)
 
     current_active_users = current_usage.active_users if current_usage else 0
-    current_active_authorities = current_usage.active_authorities if current_usage else 0
+    current_active_authorities = (
+        current_usage.active_authorities if current_usage else 0
+    )
 
-    user_percent = (current_active_users / customer.licensed_users * 100) if customer.licensed_users > 0 else 0
-    authority_percent = (current_active_authorities / customer.licensed_authorities * 100) if customer.licensed_authorities > 0 else 0
+    user_percent = (
+        (current_active_users / customer.licensed_users * 100)
+        if customer.licensed_users > 0
+        else 0
+    )
+    authority_percent = (
+        (current_active_authorities / customer.licensed_authorities * 100)
+        if customer.licensed_authorities > 0
+        else 0
+    )
 
     return CustomerWithLicensesResponse(
         **CustomerResponse.model_validate(customer).model_dump(),
-        license_usages=[LicenseUsageResponse.model_validate(u) for u in customer.license_usages[-30:]],
-        license_alerts=[LicenseAlertResponse.model_validate(a) for a in customer.license_alerts if not a.acknowledged],
+        license_usages=[
+            LicenseUsageResponse.model_validate(u)
+            for u in customer.license_usages[-30:]
+        ],
+        license_alerts=[
+            LicenseAlertResponse.model_validate(a)
+            for a in customer.license_alerts
+            if not a.acknowledged
+        ],
         current_active_users=current_active_users,
         current_active_authorities=current_active_authorities,
         user_license_percent=round(user_percent, 1),
@@ -184,9 +200,14 @@ async def update_customer(
     update_data = data.model_dump(exclude_unset=True)
 
     # Check contract number uniqueness if changed
-    if "contract_number" in update_data and update_data["contract_number"] != customer.contract_number:
+    if (
+        "contract_number" in update_data
+        and update_data["contract_number"] != customer.contract_number
+    ):
         result = await db.execute(
-            select(Customer).where(Customer.contract_number == update_data["contract_number"])
+            select(Customer).where(
+                Customer.contract_number == update_data["contract_number"]
+            )
         )
         if result.scalar_one_or_none():
             raise HTTPException(
@@ -267,8 +288,16 @@ async def get_license_history(
     current_users = today_usage.active_users if today_usage else 0
     current_authorities = today_usage.active_authorities if today_usage else 0
 
-    user_percent = (current_users / customer.licensed_users * 100) if customer.licensed_users > 0 else 0
-    authority_percent = (current_authorities / customer.licensed_authorities * 100) if customer.licensed_authorities > 0 else 0
+    user_percent = (
+        (current_users / customer.licensed_users * 100)
+        if customer.licensed_users > 0
+        else 0
+    )
+    authority_percent = (
+        (current_authorities / customer.licensed_authorities * 100)
+        if customer.licensed_authorities > 0
+        else 0
+    )
 
     return LicenseHistoryResponse(
         history=[LicenseUsageResponse.model_validate(u) for u in usages],
@@ -391,7 +420,9 @@ async def get_license_alerts(
     return [LicenseAlertResponse.model_validate(a) for a in alerts]
 
 
-@router.post("/{customer_id}/alerts/{alert_id}/acknowledge", response_model=LicenseAlertResponse)
+@router.post(
+    "/{customer_id}/alerts/{alert_id}/acknowledge", response_model=LicenseAlertResponse
+)
 async def acknowledge_alert(
     customer_id: str,
     alert_id: str,

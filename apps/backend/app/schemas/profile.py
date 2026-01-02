@@ -8,8 +8,8 @@ import re
 
 def validate_hex_color(v: str) -> str:
     """Validate hex color format."""
-    if not re.match(r'^#[0-9A-Fa-f]{6}$', v):
-        raise ValueError('Color must be in hex format (e.g., #1e40af)')
+    if not re.match(r"^#[0-9A-Fa-f]{6}$", v):
+        raise ValueError("Color must be in hex format (e.g., #1e40af)")
     return v.lower()
 
 
@@ -34,7 +34,7 @@ class CBProfileCreate(CBProfileBase):
     primary_color: str = Field(default="#1e40af")
     secondary_color: str = Field(default="#3b82f6")
 
-    @field_validator('primary_color', 'secondary_color')
+    @field_validator("primary_color", "secondary_color")
     @classmethod
     def validate_colors(cls, v: str) -> str:
         return validate_hex_color(v)
@@ -55,7 +55,7 @@ class CBProfileUpdate(BaseModel):
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
 
-    @field_validator('primary_color', 'secondary_color')
+    @field_validator("primary_color", "secondary_color")
     @classmethod
     def validate_colors(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
@@ -84,9 +84,14 @@ class AuthorityProfileBase(BaseModel):
 
     official_name: str = Field(..., min_length=1, max_length=255)
     short_name: Optional[str] = Field(None, max_length=50)
-    authority_type: Optional[Literal[
-        'audit_authority', 'certifying_authority', 'managing_authority', 'intermediate_body'
-    ]] = None
+    authority_type: Optional[
+        Literal[
+            "audit_authority",
+            "certifying_authority",
+            "managing_authority",
+            "intermediate_body",
+        ]
+    ] = None
     street: Optional[str] = Field(None, max_length=255)
     postal_code: Optional[str] = Field(None, max_length=20)
     city: Optional[str] = Field(None, max_length=100)
@@ -103,7 +108,7 @@ class AuthorityProfileCreate(AuthorityProfileBase):
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
 
-    @field_validator('primary_color', 'secondary_color')
+    @field_validator("primary_color", "secondary_color")
     @classmethod
     def validate_colors(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
@@ -116,9 +121,14 @@ class AuthorityProfileUpdate(BaseModel):
 
     official_name: Optional[str] = Field(None, min_length=1, max_length=255)
     short_name: Optional[str] = Field(None, max_length=50)
-    authority_type: Optional[Literal[
-        'audit_authority', 'certifying_authority', 'managing_authority', 'intermediate_body'
-    ]] = None
+    authority_type: Optional[
+        Literal[
+            "audit_authority",
+            "certifying_authority",
+            "managing_authority",
+            "intermediate_body",
+        ]
+    ] = None
     street: Optional[str] = Field(None, max_length=255)
     postal_code: Optional[str] = Field(None, max_length=20)
     city: Optional[str] = Field(None, max_length=100)
@@ -130,7 +140,7 @@ class AuthorityProfileUpdate(BaseModel):
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
 
-    @field_validator('primary_color', 'secondary_color')
+    @field_validator("primary_color", "secondary_color")
     @classmethod
     def validate_colors(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:

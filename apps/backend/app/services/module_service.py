@@ -21,7 +21,10 @@ from app.models.module_converter import (
     ModuleConversionLog,
     ModuleTemplate,
 )
-from app.services.github_service import GitHubService, create_github_service_from_integration
+from app.services.github_service import (
+    GitHubService,
+    create_github_service_from_integration,
+)
 from app.services.llm import LLMService, LLMMessage
 from app.services.llm.base import MessageRole
 
@@ -217,7 +220,9 @@ class ModuleConverterService:
 
             # Step 2: Prepare conversion
             await self._create_step(conversion, 2, "prepare", "Preparing conversion")
-            context = await self._prepare_conversion(conversion, template, source_analysis)
+            context = await self._prepare_conversion(
+                conversion, template, source_analysis
+            )
             await self._complete_step(conversion, 2, output_data=context)
             conversion.progress = 20
             await self.db.commit()
@@ -386,7 +391,11 @@ class ModuleConverterService:
         """
         context = {
             "template_name": template.name,
-            "module_type": template.module_type.value if hasattr(template.module_type, 'value') else template.module_type,
+            "module_type": (
+                template.module_type.value
+                if hasattr(template.module_type, "value")
+                else template.module_type
+            ),
             "package_name": template.package_name,
             "source_analysis": source_analysis,
             "conversion_rules": template.conversion_rules,
@@ -545,7 +554,9 @@ Please generate the converted code."""
         """
         # Get GitHub integration
         integration_result = await self.db.execute(
-            select(GitHubIntegration).where(GitHubIntegration.id == github_integration_id)
+            select(GitHubIntegration).where(
+                GitHubIntegration.id == github_integration_id
+            )
         )
         integration = integration_result.scalar_one_or_none()
         if not integration:
@@ -576,8 +587,11 @@ Please generate the converted code."""
                 }
             ]
             await github.create_files_in_commit(
-                owner, repo, branch_name, files,
-                f"feat(module-converter): Add converted module {conversion.job_id}"
+                owner,
+                repo,
+                branch_name,
+                files,
+                f"feat(module-converter): Add converted module {conversion.job_id}",
             )
 
             # Create PR
@@ -586,7 +600,8 @@ Please generate the converted code."""
                 action="converted",
             )
             pr = await github.create_pull_request(
-                owner, repo,
+                owner,
+                repo,
                 title=title,
                 head=branch_name,
                 base=base_branch,
@@ -598,7 +613,9 @@ Please generate the converted code."""
 
             # Add labels if configured
             if integration.default_labels:
-                await github.add_labels(owner, repo, pr.number, integration.default_labels)
+                await github.add_labels(
+                    owner, repo, pr.number, integration.default_labels
+                )
 
             # Request reviewers if configured
             if integration.default_reviewers:
@@ -651,10 +668,14 @@ Please generate the converted code."""
         include_public: bool = True,
     ) -> list[ModuleTemplate]:
         """List available templates."""
-        query = select(ModuleTemplate).where(
-            (ModuleTemplate.tenant_id == tenant_id) |
-            (ModuleTemplate.is_public == True if include_public else False)
-        ).where(ModuleTemplate.is_active == True)
+        query = (
+            select(ModuleTemplate)
+            .where(
+                (ModuleTemplate.tenant_id == tenant_id)
+                | (ModuleTemplate.is_public == True if include_public else False)
+            )
+            .where(ModuleTemplate.is_active == True)
+        )
 
         result = await self.db.execute(query)
         return list(result.scalars().all())

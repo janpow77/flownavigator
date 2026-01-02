@@ -36,9 +36,7 @@ async def check_tenant_access(
     require_admin: bool = False,
 ) -> Tenant:
     """Check if user has access to the tenant."""
-    result = await db.execute(
-        select(Tenant).where(Tenant.id == tenant_id)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
 
     if not tenant:
@@ -57,7 +55,11 @@ async def check_tenant_access(
             )
 
     # Check admin role if required
-    if require_admin and user.role not in ["system_admin", "group_admin", "authority_head"]:
+    if require_admin and user.role not in [
+        "system_admin",
+        "group_admin",
+        "authority_head",
+    ]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administratorrechte erforderlich",
@@ -125,7 +127,11 @@ async def update_cb_profile(
     return CBProfileResponse.model_validate(profile)
 
 
-@router.post("/tenants/{tenant_id}/profile", response_model=CBProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/tenants/{tenant_id}/profile",
+    response_model=CBProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_cb_profile(
     tenant_id: str,
     data: CBProfileCreate,
@@ -202,7 +208,9 @@ async def upload_cb_logo(
 
 
 # Authority Profile Endpoints
-@router.get("/authorities/{tenant_id}/profile", response_model=AuthorityProfileWithBranding)
+@router.get(
+    "/authorities/{tenant_id}/profile", response_model=AuthorityProfileWithBranding
+)
 async def get_authority_profile(
     tenant_id: str,
     current_user: User = Depends(get_current_user),
@@ -261,7 +269,11 @@ async def update_authority_profile(
     return AuthorityProfileResponse.model_validate(profile)
 
 
-@router.post("/authorities/{tenant_id}/profile", response_model=AuthorityProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/authorities/{tenant_id}/profile",
+    response_model=AuthorityProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_authority_profile(
     tenant_id: str,
     data: AuthorityProfileCreate,
@@ -316,6 +328,7 @@ async def admin_update_cb_profile(
 ) -> CBProfileResponse:
     """Update any CB profile (vendor_admin only)."""
     from app.api.vendor import require_vendor_admin
+
     await require_vendor_admin(current_user)
 
     result = await db.execute(

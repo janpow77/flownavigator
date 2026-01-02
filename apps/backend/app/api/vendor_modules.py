@@ -12,7 +12,13 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.vendor import VendorUser
 from app.models.customer import Customer
-from app.models.module import Module, ModuleStatus, ModuleDeployment, DeploymentStatus, ReleaseNote
+from app.models.module import (
+    Module,
+    ModuleStatus,
+    ModuleDeployment,
+    DeploymentStatus,
+    ReleaseNote,
+)
 from app.api.vendor import (
     get_current_vendor_user,
     require_vendor_admin,
@@ -114,8 +120,12 @@ async def get_module(
 
     return ModuleWithDeploymentsResponse(
         **ModuleResponse.model_validate(module).model_dump(),
-        deployments=[ModuleDeploymentResponse.model_validate(d) for d in module.deployments],
-        release_notes=[ReleaseNoteResponse.model_validate(r) for r in module.release_notes],
+        deployments=[
+            ModuleDeploymentResponse.model_validate(d) for d in module.deployments
+        ],
+        release_notes=[
+            ReleaseNoteResponse.model_validate(r) for r in module.release_notes
+        ],
     )
 
 
@@ -127,9 +137,7 @@ async def update_module(
     db: AsyncSession = Depends(get_db),
 ) -> ModuleResponse:
     """Update module (vendor_developer only)."""
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     module = result.scalar_one_or_none()
 
     if not module:
@@ -166,9 +174,7 @@ async def release_module(
     db: AsyncSession = Depends(get_db),
 ) -> ModuleResponse:
     """Release a module (vendor_qa only)."""
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     module = result.scalar_one_or_none()
 
     if not module:
@@ -220,9 +226,7 @@ async def list_module_deployments(
     db: AsyncSession = Depends(get_db),
 ) -> ModuleDeploymentListResponse:
     """List all deployments for a module."""
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     if not result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -242,7 +246,9 @@ async def list_module_deployments(
     )
 
 
-@router.post("/{module_id}/deploy/{customer_id}", response_model=ModuleDeploymentResponse)
+@router.post(
+    "/{module_id}/deploy/{customer_id}", response_model=ModuleDeploymentResponse
+)
 async def deploy_module(
     module_id: str,
     customer_id: str,
@@ -251,9 +257,7 @@ async def deploy_module(
 ) -> ModuleDeploymentResponse:
     """Deploy a module to a customer (vendor_admin only)."""
     # Check module exists and is released
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     module = result.scalar_one_or_none()
 
     if not module:
@@ -288,7 +292,13 @@ async def deploy_module(
         select(ModuleDeployment).where(
             ModuleDeployment.module_id == module_id,
             ModuleDeployment.customer_id == customer_id,
-            ModuleDeployment.status.in_([DeploymentStatus.pending, DeploymentStatus.deploying, DeploymentStatus.deployed]),
+            ModuleDeployment.status.in_(
+                [
+                    DeploymentStatus.pending,
+                    DeploymentStatus.deploying,
+                    DeploymentStatus.deployed,
+                ]
+            ),
         )
     )
     existing = result.scalar_one_or_none()
@@ -327,7 +337,9 @@ async def deploy_module(
     return ModuleDeploymentResponse.model_validate(deployment)
 
 
-@router.post("/{module_id}/rollback/{customer_id}", response_model=ModuleDeploymentResponse)
+@router.post(
+    "/{module_id}/rollback/{customer_id}", response_model=ModuleDeploymentResponse
+)
 async def rollback_module(
     module_id: str,
     customer_id: str,
@@ -373,9 +385,7 @@ async def list_release_notes(
     db: AsyncSession = Depends(get_db),
 ) -> ReleaseNoteListResponse:
     """List all release notes for a module."""
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     if not result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -395,7 +405,11 @@ async def list_release_notes(
     )
 
 
-@router.post("/{module_id}/release-notes", response_model=ReleaseNoteResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{module_id}/release-notes",
+    response_model=ReleaseNoteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_release_note(
     module_id: str,
     data: ReleaseNoteCreate,
@@ -403,9 +417,7 @@ async def create_release_note(
     db: AsyncSession = Depends(get_db),
 ) -> ReleaseNoteResponse:
     """Create a release note for a module (vendor_qa only)."""
-    result = await db.execute(
-        select(Module).where(Module.id == module_id)
-    )
+    result = await db.execute(select(Module).where(Module.id == module_id))
     module = result.scalar_one_or_none()
 
     if not module:

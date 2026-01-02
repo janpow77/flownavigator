@@ -46,10 +46,12 @@ class AnthropicProvider(BaseLLMProvider):
             if msg.role == MessageRole.SYSTEM:
                 system_prompt = msg.content
             else:
-                formatted_messages.append({
-                    "role": msg.role.value,
-                    "content": msg.content,
-                })
+                formatted_messages.append(
+                    {
+                        "role": msg.role.value,
+                        "content": msg.content,
+                    }
+                )
 
         return system_prompt, formatted_messages
 
@@ -143,6 +145,7 @@ class AnthropicProvider(BaseLLMProvider):
                     if line.startswith("data: "):
                         try:
                             import json
+
                             data = json.loads(line[6:])
                             event_type = data.get("type")
 

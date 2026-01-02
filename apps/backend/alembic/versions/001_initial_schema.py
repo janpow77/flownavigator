@@ -5,6 +5,7 @@ Revises:
 Create Date: 2024-12-30
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -57,7 +58,9 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column(
             "type",
-            postgresql.ENUM("group", "authority", name="tenant_type", create_type=False),
+            postgresql.ENUM(
+                "group", "authority", name="tenant_type", create_type=False
+            ),
             nullable=False,
         ),
         sa.Column("parent_id", postgresql.UUID(as_uuid=False), nullable=True),
@@ -165,7 +168,9 @@ def upgrade() -> None:
         sa.Column(
             "checklist_template_id", postgresql.UUID(as_uuid=False), nullable=False
         ),
-        sa.Column("checklist_version", sa.Integer(), nullable=False, server_default="1"),
+        sa.Column(
+            "checklist_version", sa.Integer(), nullable=False, server_default="1"
+        ),
         sa.Column("config", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column(
             "status",
@@ -324,7 +329,9 @@ def upgrade() -> None:
             name="fk_group_query_responses_assignment_id_group_query_assignments",
             ondelete="CASCADE",
         ),
-        sa.UniqueConstraint("assignment_id", name="uq_group_query_responses_assignment"),
+        sa.UniqueConstraint(
+            "assignment_id", name="uq_group_query_responses_assignment"
+        ),
     )
     op.create_index(
         "ix_group_query_responses_tenant_id",

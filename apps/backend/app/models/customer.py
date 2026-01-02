@@ -46,21 +46,31 @@ class Customer(Base, TimestampMixin):
     )
 
     # Contract details
-    contract_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    contract_number: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False
+    )
     contract_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     contract_end: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Licensing
     licensed_users: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
-    licensed_authorities: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    licensed_authorities: Mapped[int] = mapped_column(
+        Integer, default=1, nullable=False
+    )
 
     # Billing
     billing_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
     billing_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    billing_address_street: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    billing_address_street: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     billing_address_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    billing_address_postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    billing_address_country: Mapped[str] = mapped_column(String(100), default="Deutschland")
+    billing_address_postal_code: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    billing_address_country: Mapped[str] = mapped_column(
+        String(100), default="Deutschland"
+    )
     payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Status
@@ -127,9 +137,7 @@ class LicenseUsage(Base):
     )
 
     # Unique constraint on customer + date
-    __table_args__ = (
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)
 
 
 class LicenseAlert(Base):

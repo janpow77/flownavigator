@@ -19,7 +19,9 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     """Schema for creating a customer."""
 
-    tenant_name: str = Field(..., min_length=1, max_length=255, description="Name for the tenant to create")
+    tenant_name: str = Field(
+        ..., min_length=1, max_length=255, description="Name for the tenant to create"
+    )
     tenant_type: str = Field(default="group", pattern="^(group|authority)$")
     contract_start: Optional[date] = None
     contract_end: Optional[date] = None

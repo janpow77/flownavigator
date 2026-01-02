@@ -124,9 +124,7 @@ async def get_module_event(
     current_user: User = Depends(get_current_user),
 ):
     """Get a specific module event."""
-    result = await db.execute(
-        select(ModuleEvent).where(ModuleEvent.id == event_id)
-    )
+    result = await db.execute(select(ModuleEvent).where(ModuleEvent.id == event_id))
     event = result.scalar_one_or_none()
 
     if not event:
@@ -204,7 +202,10 @@ async def create_conversation(
     return LLMConversationResponse.model_validate(conversation)
 
 
-@router.get("/conversations/{conversation_id}", response_model=LLMConversationWithMessagesResponse)
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=LLMConversationWithMessagesResponse,
+)
 async def get_conversation(
     conversation_id: str,
     db: AsyncSession = Depends(get_db),
@@ -230,7 +231,9 @@ async def get_conversation(
     return LLMConversationWithMessagesResponse.model_validate(conversation)
 
 
-@router.patch("/conversations/{conversation_id}", response_model=LLMConversationResponse)
+@router.patch(
+    "/conversations/{conversation_id}", response_model=LLMConversationResponse
+)
 async def update_conversation(
     conversation_id: str,
     data: LLMConversationUpdate,
@@ -287,7 +290,9 @@ async def delete_conversation(
 # --- LLM Messages ---
 
 
-@router.get("/conversations/{conversation_id}/messages", response_model=LLMMessageListResponse)
+@router.get(
+    "/conversations/{conversation_id}/messages", response_model=LLMMessageListResponse
+)
 async def list_messages(
     conversation_id: str,
     db: AsyncSession = Depends(get_db),
@@ -319,7 +324,11 @@ async def list_messages(
     )
 
 
-@router.post("/conversations/{conversation_id}/messages", response_model=LLMMessageResponse, status_code=201)
+@router.post(
+    "/conversations/{conversation_id}/messages",
+    response_model=LLMMessageResponse,
+    status_code=201,
+)
 async def add_message(
     conversation_id: str,
     data: LLMMessageCreate,
@@ -362,7 +371,9 @@ async def add_message(
 # --- LLM Feedback (AC-7.1.3) ---
 
 
-@router.get("/conversations/{conversation_id}/feedback", response_model=LLMFeedbackListResponse)
+@router.get(
+    "/conversations/{conversation_id}/feedback", response_model=LLMFeedbackListResponse
+)
 async def list_feedback(
     conversation_id: str,
     db: AsyncSession = Depends(get_db),
@@ -394,7 +405,11 @@ async def list_feedback(
     )
 
 
-@router.post("/conversations/{conversation_id}/feedback", response_model=LLMFeedbackResponse, status_code=201)
+@router.post(
+    "/conversations/{conversation_id}/feedback",
+    response_model=LLMFeedbackResponse,
+    status_code=201,
+)
 async def add_feedback(
     conversation_id: str,
     data: LLMFeedbackCreate,

@@ -277,7 +277,9 @@ class TestVendorAPI:
         assert data["name"] == vendor["name"]
 
         # GET users
-        response = await client.get("/api/v1/vendor/users", headers=vendor_admin_headers)
+        response = await client.get(
+            "/api/v1/vendor/users", headers=vendor_admin_headers
+        )
         assert response.status_code == 200
 
     @pytest.mark.asyncio
@@ -324,7 +326,10 @@ class TestVendorAPI:
 
     @pytest.mark.asyncio
     async def test_qa_release_module(
-        self, client: AsyncClient, vendor_developer_headers: dict, vendor_qa_headers: dict
+        self,
+        client: AsyncClient,
+        vendor_developer_headers: dict,
+        vendor_qa_headers: dict,
     ):
         """AC-1.4.4: vendor_qa kann Module releasen."""
         # Create module as developer
@@ -378,7 +383,9 @@ class TestVendorAPI:
                     "role": role,
                 },
             )
-            assert response.status_code == 201, f"Failed for role {role}: {response.json()}"
+            assert (
+                response.status_code == 201
+            ), f"Failed for role {role}: {response.json()}"
             data = response.json()
             assert data["role"] == role
 
@@ -532,7 +539,10 @@ class TestModuleDeploymentAPI:
 
     @pytest.mark.asyncio
     async def test_module_lifecycle(
-        self, client: AsyncClient, vendor_developer_headers: dict, vendor_qa_headers: dict
+        self,
+        client: AsyncClient,
+        vendor_developer_headers: dict,
+        vendor_qa_headers: dict,
     ):
         """AC-1.1.6: Module kann erstellt und released werden."""
         # Create module
@@ -561,7 +571,10 @@ class TestModuleDeploymentAPI:
 
     @pytest.mark.asyncio
     async def test_release_note_creation(
-        self, client: AsyncClient, vendor_developer_headers: dict, vendor_qa_headers: dict
+        self,
+        client: AsyncClient,
+        vendor_developer_headers: dict,
+        vendor_qa_headers: dict,
     ):
         """AC-1.1.8: ReleaseNote wird bei Release erstellt."""
         # Create module

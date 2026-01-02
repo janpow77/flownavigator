@@ -32,10 +32,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     def _format_messages(self, messages: list[LLMMessage]) -> list[dict[str, str]]:
         """Format messages for OpenAI API."""
-        return [
-            {"role": msg.role.value, "content": msg.content}
-            for msg in messages
-        ]
+        return [{"role": msg.role.value, "content": msg.content} for msg in messages]
 
     async def complete(
         self,
@@ -115,6 +112,7 @@ class OpenAIProvider(BaseLLMProvider):
                             break
                         try:
                             import json
+
                             chunk = json.loads(data)
                             delta = chunk["choices"][0].get("delta", {})
                             if content := delta.get("content"):

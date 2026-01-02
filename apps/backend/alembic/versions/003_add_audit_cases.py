@@ -5,6 +5,7 @@ Revises: 002
 Create Date: 2024-12-30
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,7 +21,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create enums with DO block to check if they exist
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audit_case_status') THEN
@@ -57,7 +59,8 @@ def upgrade() -> None:
                 CREATE TYPE template_status AS ENUM ('draft', 'published', 'archived');
             END IF;
         END$$;
-    """)
+    """
+    )
 
     # Create fiscal_years table
     op.create_table(
@@ -68,11 +71,43 @@ def upgrade() -> None:
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("end_date", sa.Date(), nullable=False),
-        sa.Column("status", postgresql.ENUM("planning", "active", "closing", "closed", name="fiscal_year_status", create_type=False), nullable=False, server_default="planning"),
-        sa.Column("config", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
-        sa.Column("statistics", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "status",
+            postgresql.ENUM(
+                "planning",
+                "active",
+                "closing",
+                "closed",
+                name="fiscal_year_status",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="planning",
+        ),
+        sa.Column(
+            "config",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
+        sa.Column(
+            "statistics",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -87,15 +122,57 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("version", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("is_current", sa.Boolean(), nullable=False, server_default="true"),
-        sa.Column("checklist_type", postgresql.ENUM("main", "procurement", "subsidy", "eligibility", "system", "custom", name="template_checklist_type", create_type=False), nullable=False, server_default="main"),
-        sa.Column("structure", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
-        sa.Column("status", postgresql.ENUM("draft", "published", "archived", name="template_status", create_type=False), nullable=False, server_default="draft"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "checklist_type",
+            postgresql.ENUM(
+                "main",
+                "procurement",
+                "subsidy",
+                "eligibility",
+                "system",
+                "custom",
+                name="template_checklist_type",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="main",
+        ),
+        sa.Column(
+            "structure",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
+        sa.Column(
+            "status",
+            postgresql.ENUM(
+                "draft",
+                "published",
+                "archived",
+                name="template_status",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="draft",
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_checklist_templates_tenant_id", "checklist_templates", ["tenant_id"])
+    op.create_index(
+        "ix_checklist_templates_tenant_id", "checklist_templates", ["tenant_id"]
+    )
 
     # Create audit_cases table
     op.create_table(
@@ -110,24 +187,78 @@ def upgrade() -> None:
         sa.Column("approved_amount", sa.Numeric(15, 2), nullable=True),
         sa.Column("audited_amount", sa.Numeric(15, 2), nullable=True),
         sa.Column("irregular_amount", sa.Numeric(15, 2), nullable=True),
-        sa.Column("status", postgresql.ENUM("draft", "in_progress", "review", "completed", "archived", name="audit_case_status", create_type=False), nullable=False, server_default="draft"),
-        sa.Column("audit_type", postgresql.ENUM("operation", "system", "accounts", name="audit_type", create_type=False), nullable=False, server_default="operation"),
+        sa.Column(
+            "status",
+            postgresql.ENUM(
+                "draft",
+                "in_progress",
+                "review",
+                "completed",
+                "archived",
+                name="audit_case_status",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="draft",
+        ),
+        sa.Column(
+            "audit_type",
+            postgresql.ENUM(
+                "operation", "system", "accounts", name="audit_type", create_type=False
+            ),
+            nullable=False,
+            server_default="operation",
+        ),
         sa.Column("audit_start_date", sa.Date(), nullable=True),
         sa.Column("audit_end_date", sa.Date(), nullable=True),
         sa.Column("primary_auditor_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("secondary_auditor_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("team_leader_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("result", postgresql.ENUM("no_findings", "findings_minor", "findings_major", "irregularity", name="audit_result", create_type=False), nullable=True),
-        sa.Column("custom_data", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
+        sa.Column(
+            "result",
+            postgresql.ENUM(
+                "no_findings",
+                "findings_minor",
+                "findings_major",
+                "irregularity",
+                name="audit_result",
+                create_type=False,
+            ),
+            nullable=True,
+        ),
+        sa.Column(
+            "custom_data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
         sa.Column("is_sample", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("requires_follow_up", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "requires_follow_up", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("internal_notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["fiscal_year_id"], ["fiscal_years.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["primary_auditor_id"], ["users.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["secondary_auditor_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["fiscal_year_id"], ["fiscal_years.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["primary_auditor_id"], ["users.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["secondary_auditor_id"], ["users.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(["team_leader_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -141,23 +272,74 @@ def upgrade() -> None:
         "audit_case_checklists",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("audit_case_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("checklist_template_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("checklist_type", postgresql.ENUM("main", "procurement", "subsidy", "eligibility", "custom", name="checklist_type", create_type=False), nullable=False, server_default="main"),
-        sa.Column("status", postgresql.ENUM("not_started", "in_progress", "completed", name="checklist_status", create_type=False), nullable=False, server_default="not_started"),
+        sa.Column(
+            "checklist_template_id", postgresql.UUID(as_uuid=True), nullable=True
+        ),
+        sa.Column(
+            "checklist_type",
+            postgresql.ENUM(
+                "main",
+                "procurement",
+                "subsidy",
+                "eligibility",
+                "custom",
+                name="checklist_type",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="main",
+        ),
+        sa.Column(
+            "status",
+            postgresql.ENUM(
+                "not_started",
+                "in_progress",
+                "completed",
+                name="checklist_status",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="not_started",
+        ),
         sa.Column("progress", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("total_questions", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("answered_questions", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("responses", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default="{}"),
+        sa.Column(
+            "answered_questions", sa.Integer(), nullable=False, server_default="0"
+        ),
+        sa.Column(
+            "responses",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default="{}",
+        ),
         sa.Column("completed_by", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["audit_case_id"], ["audit_cases.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["checklist_template_id"], ["checklist_templates.id"], ondelete="SET NULL"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["audit_case_id"], ["audit_cases.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["checklist_template_id"], ["checklist_templates.id"], ondelete="SET NULL"
+        ),
         sa.ForeignKeyConstraint(["completed_by"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_audit_case_checklists_audit_case_id", "audit_case_checklists", ["audit_case_id"])
+    op.create_index(
+        "ix_audit_case_checklists_audit_case_id",
+        "audit_case_checklists",
+        ["audit_case_id"],
+    )
 
     # Create audit_case_findings table
     op.create_table(
@@ -165,25 +347,78 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("audit_case_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("finding_number", sa.Integer(), nullable=False),
-        sa.Column("finding_type", postgresql.ENUM("irregularity", "deficiency", "recommendation", "observation", name="finding_type", create_type=False), nullable=False),
-        sa.Column("error_category", postgresql.ENUM("ineligible_expenditure", "public_procurement", "missing_documents", "calculation_error", "double_funding", "other", name="error_category", create_type=False), nullable=True),
+        sa.Column(
+            "finding_type",
+            postgresql.ENUM(
+                "irregularity",
+                "deficiency",
+                "recommendation",
+                "observation",
+                name="finding_type",
+                create_type=False,
+            ),
+            nullable=False,
+        ),
+        sa.Column(
+            "error_category",
+            postgresql.ENUM(
+                "ineligible_expenditure",
+                "public_procurement",
+                "missing_documents",
+                "calculation_error",
+                "double_funding",
+                "other",
+                name="error_category",
+                create_type=False,
+            ),
+            nullable=True,
+        ),
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("financial_impact", sa.Numeric(15, 2), nullable=True),
         sa.Column("is_systemic", sa.Boolean(), nullable=False, server_default="false"),
-        sa.Column("status", postgresql.ENUM("draft", "confirmed", "disputed", "resolved", "withdrawn", name="finding_status", create_type=False), nullable=False, server_default="draft"),
-        sa.Column("response_requested", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "status",
+            postgresql.ENUM(
+                "draft",
+                "confirmed",
+                "disputed",
+                "resolved",
+                "withdrawn",
+                name="finding_status",
+                create_type=False,
+            ),
+            nullable=False,
+            server_default="draft",
+        ),
+        sa.Column(
+            "response_requested", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("response_deadline", sa.Date(), nullable=True),
         sa.Column("response_received", sa.Text(), nullable=True),
         sa.Column("response_received_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("final_assessment", sa.Text(), nullable=True),
         sa.Column("corrective_action", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["audit_case_id"], ["audit_cases.id"], ondelete="CASCADE"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["audit_case_id"], ["audit_cases.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_audit_case_findings_audit_case_id", "audit_case_findings", ["audit_case_id"])
+    op.create_index(
+        "ix_audit_case_findings_audit_case_id", "audit_case_findings", ["audit_case_id"]
+    )
 
     # Update document_boxes to reference audit_cases
     op.create_foreign_key(
@@ -198,13 +433,19 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Remove foreign key from document_boxes
-    op.drop_constraint("fk_document_boxes_audit_case_id", "document_boxes", type_="foreignkey")
+    op.drop_constraint(
+        "fk_document_boxes_audit_case_id", "document_boxes", type_="foreignkey"
+    )
 
     # Drop tables
-    op.drop_index("ix_audit_case_findings_audit_case_id", table_name="audit_case_findings")
+    op.drop_index(
+        "ix_audit_case_findings_audit_case_id", table_name="audit_case_findings"
+    )
     op.drop_table("audit_case_findings")
 
-    op.drop_index("ix_audit_case_checklists_audit_case_id", table_name="audit_case_checklists")
+    op.drop_index(
+        "ix_audit_case_checklists_audit_case_id", table_name="audit_case_checklists"
+    )
     op.drop_table("audit_case_checklists")
 
     op.drop_index("ix_audit_cases_status", table_name="audit_cases")

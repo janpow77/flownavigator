@@ -31,10 +31,7 @@ class OllamaProvider(BaseLLMProvider):
 
     def _format_messages(self, messages: list[LLMMessage]) -> list[dict[str, str]]:
         """Format messages for Ollama API."""
-        return [
-            {"role": msg.role.value, "content": msg.content}
-            for msg in messages
-        ]
+        return [{"role": msg.role.value, "content": msg.content} for msg in messages]
 
     async def complete(
         self,
@@ -106,6 +103,7 @@ class OllamaProvider(BaseLLMProvider):
                 async for line in response.aiter_lines():
                     try:
                         import json
+
                         data = json.loads(line)
                         message = data.get("message", {})
                         if content := message.get("content"):

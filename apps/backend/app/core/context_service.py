@@ -70,9 +70,7 @@ Antworte klar und verständlich auf Deutsch.""",
         )
 
         # Build context data based on type
-        context_data = await self._get_context_data(
-            tenant_id, context_type, context_id
-        )
+        context_data = await self._get_context_data(tenant_id, context_type, context_id)
 
         # Get recent messages if requested
         recent_messages: list[LLMMessageResponse] = []
@@ -225,9 +223,7 @@ Antworte klar und verständlich auf Deutsch.""",
 
         return [LLMMessageResponse.model_validate(m) for m in messages], total_tokens
 
-    def _enhance_prompt(
-        self, base_prompt: str, context_data: dict[str, Any]
-    ) -> str:
+    def _enhance_prompt(self, base_prompt: str, context_data: dict[str, Any]) -> str:
         """Enhance system prompt with context data."""
         if not context_data or context_data.get("error"):
             return base_prompt

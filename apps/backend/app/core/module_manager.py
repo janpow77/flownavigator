@@ -71,8 +71,7 @@ class ModuleManager:
     async def list_installed(self, customer_id: str) -> list[dict]:
         """List all installed modules for a customer."""
         result = await self.db.execute(
-            select(ModuleDeployment)
-            .where(
+            select(ModuleDeployment).where(
                 ModuleDeployment.customer_id == customer_id,
                 ModuleDeployment.status == DeploymentStatus.deployed,
             )
@@ -86,13 +85,19 @@ class ModuleManager:
             )
             module = result.scalar_one_or_none()
             if module:
-                installed.append({
-                    "id": module.id,
-                    "name": module.name,
-                    "version": deployment.deployed_version,
-                    "deployed_at": deployment.deployed_at.isoformat() if deployment.deployed_at else None,
-                    "status": deployment.status.value,
-                })
+                installed.append(
+                    {
+                        "id": module.id,
+                        "name": module.name,
+                        "version": deployment.deployed_version,
+                        "deployed_at": (
+                            deployment.deployed_at.isoformat()
+                            if deployment.deployed_at
+                            else None
+                        ),
+                        "status": deployment.status.value,
+                    }
+                )
 
         return installed
 
@@ -122,9 +127,7 @@ class ModuleManager:
 
         AC-6.1.4: Abhängigkeiten werden geprüft
         """
-        result = await self.db.execute(
-            select(Module).where(Module.id == module_id)
-        )
+        result = await self.db.execute(select(Module).where(Module.id == module_id))
         module = result.scalar_one_or_none()
 
         if not module:
@@ -154,9 +157,7 @@ class ModuleManager:
         AC-6.1.1: Module können installiert werden
         """
         # Check module exists
-        result = await self.db.execute(
-            select(Module).where(Module.id == module_id)
-        )
+        result = await self.db.execute(select(Module).where(Module.id == module_id))
         module = result.scalar_one_or_none()
 
         if not module:
@@ -240,9 +241,7 @@ class ModuleManager:
             raise ValueError(f"Module {module_id} is not installed")
 
         # Get module
-        result = await self.db.execute(
-            select(Module).where(Module.id == module_id)
-        )
+        result = await self.db.execute(select(Module).where(Module.id == module_id))
         module = result.scalar_one_or_none()
 
         if not module:
@@ -309,9 +308,7 @@ class ModuleManager:
             if mod["id"] == module_id:
                 continue
 
-            result = await self.db.execute(
-                select(Module).where(Module.id == mod["id"])
-            )
+            result = await self.db.execute(select(Module).where(Module.id == mod["id"]))
             other_module = result.scalar_one_or_none()
 
             if other_module and module_id in (other_module.dependencies or []):

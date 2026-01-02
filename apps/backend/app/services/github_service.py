@@ -406,7 +406,9 @@ class GitHubService:
             message=commit["message"],
             url=commit["url"],
             author=commit["author"]["name"],
-            date=datetime.fromisoformat(commit["author"]["date"].replace("Z", "+00:00")),
+            date=datetime.fromisoformat(
+                commit["author"]["date"].replace("Z", "+00:00")
+            ),
         )
 
     async def create_files_in_commit(
@@ -430,7 +432,9 @@ class GitHubService:
             Commit info
         """
         # Get the current commit SHA
-        ref = await self._request("GET", f"/repos/{owner}/{repo}/git/ref/heads/{branch}")
+        ref = await self._request(
+            "GET", f"/repos/{owner}/{repo}/git/ref/heads/{branch}"
+        )
         base_sha = ref["object"]["sha"]
 
         # Get the base tree
@@ -451,12 +455,14 @@ class GitHubService:
                     "encoding": "utf-8",
                 },
             )
-            tree_items.append({
-                "path": file["path"],
-                "mode": "100644",
-                "type": "blob",
-                "sha": blob["sha"],
-            })
+            tree_items.append(
+                {
+                    "path": file["path"],
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
+                }
+            )
 
         # Create new tree
         new_tree = await self._request(
@@ -491,7 +497,9 @@ class GitHubService:
             message=commit["message"],
             url=commit["url"],
             author=commit["author"]["name"],
-            date=datetime.fromisoformat(commit["author"]["date"].replace("Z", "+00:00")),
+            date=datetime.fromisoformat(
+                commit["author"]["date"].replace("Z", "+00:00")
+            ),
         )
 
     # ==========================================================================

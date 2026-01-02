@@ -61,7 +61,11 @@ async def list_llm_configs(
             "id": str(config.id),
             "name": config.name,
             "description": config.description,
-            "provider": config.provider.value if hasattr(config.provider, 'value') else config.provider,
+            "provider": (
+                config.provider.value
+                if hasattr(config.provider, "value")
+                else config.provider
+            ),
             "model_name": config.model_name,
             "api_endpoint": config.api_endpoint,
             "api_key_preview": _mask_api_key(config.api_key_encrypted),
@@ -105,8 +109,7 @@ async def create_llm_config(
     # If this is default, unset other defaults
     if config.is_default:
         await db.execute(
-            select(LLMConfiguration)
-            .where(LLMConfiguration.is_default == True)
+            select(LLMConfiguration).where(LLMConfiguration.is_default == True)
         )
         result = await db.execute(
             select(LLMConfiguration).where(LLMConfiguration.is_default == True)
@@ -140,7 +143,11 @@ async def get_llm_config(
         "id": str(config.id),
         "name": config.name,
         "description": config.description,
-        "provider": config.provider.value if hasattr(config.provider, 'value') else config.provider,
+        "provider": (
+            config.provider.value
+            if hasattr(config.provider, "value")
+            else config.provider
+        ),
         "model_name": config.model_name,
         "api_endpoint": config.api_endpoint,
         "api_key_preview": _mask_api_key(config.api_key_encrypted),
@@ -175,9 +182,22 @@ async def update_llm_config(
         raise HTTPException(status_code=404, detail="Configuration not found")
 
     # Update fields
-    for field in ["name", "description", "provider", "model_name", "api_endpoint",
-                  "temperature", "max_tokens", "top_p", "is_active", "is_default",
-                  "priority", "requests_per_minute", "tokens_per_minute", "config"]:
+    for field in [
+        "name",
+        "description",
+        "provider",
+        "model_name",
+        "api_endpoint",
+        "temperature",
+        "max_tokens",
+        "top_p",
+        "is_active",
+        "is_default",
+        "priority",
+        "requests_per_minute",
+        "tokens_per_minute",
+        "config",
+    ]:
         if field in data:
             setattr(config, field, data[field])
 
@@ -244,8 +264,8 @@ async def list_templates(
 
     # Filter by tenant or public
     query = query.where(
-        (ModuleTemplate.tenant_id == current_user.tenant_id) |
-        (ModuleTemplate.is_public == True if include_public else False)
+        (ModuleTemplate.tenant_id == current_user.tenant_id)
+        | (ModuleTemplate.is_public == True if include_public else False)
     )
 
     if module_type:
@@ -342,10 +362,22 @@ async def update_template(
 
     # Update fields
     updatable = [
-        "name", "display_name", "description", "version", "module_type",
-        "package_name", "source_spec", "target_spec", "conversion_rules",
-        "system_prompt", "conversion_prompt_template", "validation_schema",
-        "include_patterns", "exclude_patterns", "is_active", "is_public",
+        "name",
+        "display_name",
+        "description",
+        "version",
+        "module_type",
+        "package_name",
+        "source_spec",
+        "target_spec",
+        "conversion_rules",
+        "system_prompt",
+        "conversion_prompt_template",
+        "validation_schema",
+        "include_patterns",
+        "exclude_patterns",
+        "is_active",
+        "is_public",
     ]
     for field in updatable:
         if field in data:
@@ -474,9 +506,7 @@ async def get_conversion(
 ) -> dict[str, Any]:
     """Get conversion details."""
     result = await db.execute(
-        select(ModuleConversionLog).where(
-            ModuleConversionLog.id == str(conversion_id)
-        )
+        select(ModuleConversionLog).where(ModuleConversionLog.id == str(conversion_id))
     )
     conversion = result.scalar_one_or_none()
 
@@ -505,18 +535,22 @@ async def get_conversion_steps(
 
     items = []
     for step in steps:
-        items.append({
-            "id": str(step.id),
-            "step_number": step.step_number,
-            "step_name": step.step_name,
-            "step_type": step.step_type,
-            "status": step.status,
-            "started_at": step.started_at.isoformat() if step.started_at else None,
-            "completed_at": step.completed_at.isoformat() if step.completed_at else None,
-            "duration_ms": step.duration_ms,
-            "error_message": step.error_message,
-            "llm_tokens": step.llm_tokens,
-        })
+        items.append(
+            {
+                "id": str(step.id),
+                "step_number": step.step_number,
+                "step_name": step.step_name,
+                "step_type": step.step_type,
+                "status": step.status,
+                "started_at": step.started_at.isoformat() if step.started_at else None,
+                "completed_at": (
+                    step.completed_at.isoformat() if step.completed_at else None
+                ),
+                "duration_ms": step.duration_ms,
+                "error_message": step.error_message,
+                "llm_tokens": step.llm_tokens,
+            }
+        )
 
     return {"items": items}
 
@@ -549,9 +583,7 @@ async def retry_conversion(
 ) -> dict[str, Any]:
     """Retry a failed conversion."""
     result = await db.execute(
-        select(ModuleConversionLog).where(
-            ModuleConversionLog.id == str(conversion_id)
-        )
+        select(ModuleConversionLog).where(ModuleConversionLog.id == str(conversion_id))
     )
     conversion = result.scalar_one_or_none()
 
@@ -592,8 +624,8 @@ async def list_github_integrations(
 ) -> dict[str, Any]:
     """List GitHub integrations."""
     query = select(GitHubIntegration).where(
-        (GitHubIntegration.tenant_id == current_user.tenant_id) |
-        (GitHubIntegration.tenant_id.is_(None))
+        (GitHubIntegration.tenant_id == current_user.tenant_id)
+        | (GitHubIntegration.tenant_id.is_(None))
     )
     query = query.where(GitHubIntegration.is_active == True)
 
@@ -619,7 +651,9 @@ async def create_github_integration(
         default_owner=data["default_owner"],
         default_repo=data["default_repo"],
         default_base_branch=data.get("default_base_branch", "main"),
-        pr_title_template=data.get("pr_title_template", "[Module Converter] {module_name} - {action}"),
+        pr_title_template=data.get(
+            "pr_title_template", "[Module Converter] {module_name} - {action}"
+        ),
         pr_body_template=data.get("pr_body_template"),
         auto_merge=data.get("auto_merge", False),
         require_review=data.get("require_review", True),
@@ -644,9 +678,7 @@ async def get_github_integration(
 ) -> dict[str, Any]:
     """Get a GitHub integration."""
     result = await db.execute(
-        select(GitHubIntegration).where(
-            GitHubIntegration.id == str(integration_id)
-        )
+        select(GitHubIntegration).where(GitHubIntegration.id == str(integration_id))
     )
     integration = result.scalar_one_or_none()
 
@@ -665,9 +697,7 @@ async def update_github_integration(
 ) -> dict[str, Any]:
     """Update a GitHub integration."""
     result = await db.execute(
-        select(GitHubIntegration).where(
-            GitHubIntegration.id == str(integration_id)
-        )
+        select(GitHubIntegration).where(GitHubIntegration.id == str(integration_id))
     )
     integration = result.scalar_one_or_none()
 
@@ -679,10 +709,20 @@ async def update_github_integration(
 
     # Update fields
     updatable = [
-        "name", "description", "default_owner", "default_repo",
-        "default_base_branch", "pr_title_template", "pr_body_template",
-        "auto_merge", "require_review", "branch_prefix",
-        "default_labels", "default_reviewers", "is_active", "config",
+        "name",
+        "description",
+        "default_owner",
+        "default_repo",
+        "default_base_branch",
+        "pr_title_template",
+        "pr_body_template",
+        "auto_merge",
+        "require_review",
+        "branch_prefix",
+        "default_labels",
+        "default_reviewers",
+        "is_active",
+        "config",
     ]
     for field in updatable:
         if field in data:
@@ -703,9 +743,7 @@ async def delete_github_integration(
 ) -> dict[str, Any]:
     """Delete a GitHub integration."""
     result = await db.execute(
-        select(GitHubIntegration).where(
-            GitHubIntegration.id == str(integration_id)
-        )
+        select(GitHubIntegration).where(GitHubIntegration.id == str(integration_id))
     )
     integration = result.scalar_one_or_none()
 
@@ -720,7 +758,9 @@ async def delete_github_integration(
     return {"message": "Integration deleted"}
 
 
-@router.post("/github-integrations/{integration_id}/validate", tags=["GitHub Integration"])
+@router.post(
+    "/github-integrations/{integration_id}/validate", tags=["GitHub Integration"]
+)
 async def validate_github_integration(
     integration_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -728,9 +768,7 @@ async def validate_github_integration(
 ) -> dict[str, Any]:
     """Validate a GitHub integration."""
     result = await db.execute(
-        select(GitHubIntegration).where(
-            GitHubIntegration.id == str(integration_id)
-        )
+        select(GitHubIntegration).where(GitHubIntegration.id == str(integration_id))
     )
     integration = result.scalar_one_or_none()
 
@@ -764,9 +802,7 @@ async def list_github_repos(
 ) -> dict[str, Any]:
     """List repositories for a GitHub integration."""
     result = await db.execute(
-        select(GitHubIntegration).where(
-            GitHubIntegration.id == str(integration_id)
-        )
+        select(GitHubIntegration).where(GitHubIntegration.id == str(integration_id))
     )
     integration = result.scalar_one_or_none()
 
@@ -820,7 +856,11 @@ def _template_to_dict(
         "display_name": template.display_name,
         "description": template.description,
         "version": template.version,
-        "module_type": template.module_type.value if hasattr(template.module_type, 'value') else template.module_type,
+        "module_type": (
+            template.module_type.value
+            if hasattr(template.module_type, "value")
+            else template.module_type
+        ),
         "package_name": template.package_name,
         "is_active": template.is_active,
         "is_public": template.is_public,
@@ -829,16 +869,18 @@ def _template_to_dict(
     }
 
     if include_prompts:
-        result.update({
-            "source_spec": template.source_spec,
-            "target_spec": template.target_spec,
-            "conversion_rules": template.conversion_rules,
-            "system_prompt": template.system_prompt,
-            "conversion_prompt_template": template.conversion_prompt_template,
-            "validation_schema": template.validation_schema,
-            "include_patterns": template.include_patterns,
-            "exclude_patterns": template.exclude_patterns,
-        })
+        result.update(
+            {
+                "source_spec": template.source_spec,
+                "target_spec": template.target_spec,
+                "conversion_rules": template.conversion_rules,
+                "system_prompt": template.system_prompt,
+                "conversion_prompt_template": template.conversion_prompt_template,
+                "validation_schema": template.validation_schema,
+                "include_patterns": template.include_patterns,
+                "exclude_patterns": template.exclude_patterns,
+            }
+        )
 
     return result
 
@@ -852,7 +894,11 @@ def _conversion_to_dict(
         "id": str(conversion.id),
         "job_id": conversion.job_id,
         "template_id": str(conversion.template_id) if conversion.template_id else None,
-        "status": conversion.status.value if hasattr(conversion.status, 'value') else conversion.status,
+        "status": (
+            conversion.status.value
+            if hasattr(conversion.status, "value")
+            else conversion.status
+        ),
         "progress": conversion.progress,
         "source_type": conversion.source_type,
         "source_url": conversion.source_url,
@@ -863,18 +909,24 @@ def _conversion_to_dict(
         "error_message": conversion.error_message,
         "staging_pr_url": conversion.staging_pr_url,
         "created_at": conversion.created_at.isoformat(),
-        "started_at": conversion.started_at.isoformat() if conversion.started_at else None,
-        "completed_at": conversion.completed_at.isoformat() if conversion.completed_at else None,
+        "started_at": (
+            conversion.started_at.isoformat() if conversion.started_at else None
+        ),
+        "completed_at": (
+            conversion.completed_at.isoformat() if conversion.completed_at else None
+        ),
     }
 
     if include_details:
-        result.update({
-            "input_data": conversion.input_data,
-            "output_data": conversion.output_data,
-            "llm_requests": conversion.llm_requests,
-            "error_details": conversion.error_details,
-            "result_artifacts": conversion.result_artifacts,
-        })
+        result.update(
+            {
+                "input_data": conversion.input_data,
+                "output_data": conversion.output_data,
+                "llm_requests": conversion.llm_requests,
+                "error_details": conversion.error_details,
+                "result_artifacts": conversion.result_artifacts,
+            }
+        )
 
     return result
 
@@ -894,20 +946,26 @@ def _github_integration_to_dict(
         "token_preview": _mask_api_key(integration.access_token_encrypted),
         "is_active": integration.is_active,
         "validation_status": integration.validation_status,
-        "last_validated_at": integration.last_validated_at.isoformat() if integration.last_validated_at else None,
+        "last_validated_at": (
+            integration.last_validated_at.isoformat()
+            if integration.last_validated_at
+            else None
+        ),
         "created_at": integration.created_at.isoformat(),
     }
 
     if include_details:
-        result.update({
-            "pr_title_template": integration.pr_title_template,
-            "pr_body_template": integration.pr_body_template,
-            "auto_merge": integration.auto_merge,
-            "require_review": integration.require_review,
-            "branch_prefix": integration.branch_prefix,
-            "default_labels": integration.default_labels,
-            "default_reviewers": integration.default_reviewers,
-            "config": integration.config,
-        })
+        result.update(
+            {
+                "pr_title_template": integration.pr_title_template,
+                "pr_body_template": integration.pr_body_template,
+                "auto_merge": integration.auto_merge,
+                "require_review": integration.require_review,
+                "branch_prefix": integration.branch_prefix,
+                "default_labels": integration.default_labels,
+                "default_reviewers": integration.default_reviewers,
+                "config": integration.config,
+            }
+        )
 
     return result

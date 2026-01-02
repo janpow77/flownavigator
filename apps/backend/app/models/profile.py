@@ -46,7 +46,9 @@ class CoordinationBodyProfile(Base, TimestampMixin):
 
     # Branding
     logo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    primary_color: Mapped[str] = mapped_column(String(7), default="#1e40af")  # hex color
+    primary_color: Mapped[str] = mapped_column(
+        String(7), default="#1e40af"
+    )  # hex color
     secondary_color: Mapped[str] = mapped_column(String(7), default="#3b82f6")
 
     # Relationships
@@ -101,7 +103,9 @@ class AuthorityProfile(Base, TimestampMixin):
 
     # Branding
     logo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    use_parent_branding: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    use_parent_branding: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
     primary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     secondary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
 

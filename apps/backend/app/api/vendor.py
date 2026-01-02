@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import create_access_token, decode_access_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    get_password_hash,
+    verify_password,
+)
 from app.models.vendor import Vendor, VendorUser, VendorRole
 from app.schemas.vendor import (
     VendorCreate,
@@ -52,9 +57,7 @@ async def get_current_vendor_user(
     if user_id is None or user_type != "vendor":
         raise credentials_exception
 
-    result = await db.execute(
-        select(VendorUser).where(VendorUser.id == user_id)
-    )
+    result = await db.execute(select(VendorUser).where(VendorUser.id == user_id))
     user = result.scalar_one_or_none()
 
     if user is None or not user.is_active:
@@ -81,7 +84,11 @@ async def require_vendor_developer(
     current_user: VendorUser = Depends(get_current_vendor_user),
 ) -> VendorUser:
     """Require vendor_developer or higher role."""
-    allowed_roles = [VendorRole.vendor_admin, VendorRole.vendor_developer, VendorRole.vendor_qa]
+    allowed_roles = [
+        VendorRole.vendor_admin,
+        VendorRole.vendor_developer,
+        VendorRole.vendor_qa,
+    ]
     if current_user.role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -150,9 +157,7 @@ async def get_vendor(
     db: AsyncSession = Depends(get_db),
 ) -> VendorResponse:
     """Get vendor information."""
-    result = await db.execute(
-        select(Vendor).where(Vendor.id == current_user.vendor_id)
-    )
+    result = await db.execute(select(Vendor).where(Vendor.id == current_user.vendor_id))
     vendor = result.scalar_one_or_none()
 
     if not vendor:
@@ -171,9 +176,7 @@ async def update_vendor(
     db: AsyncSession = Depends(get_db),
 ) -> VendorResponse:
     """Update vendor information (vendor_admin only)."""
-    result = await db.execute(
-        select(Vendor).where(Vendor.id == current_user.vendor_id)
-    )
+    result = await db.execute(select(Vendor).where(Vendor.id == current_user.vendor_id))
     vendor = result.scalar_one_or_none()
 
     if not vendor:
@@ -210,7 +213,9 @@ async def list_vendor_users(
     )
 
 
-@router.post("/users", response_model=VendorUserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users", response_model=VendorUserResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_vendor_user(
     data: VendorUserCreate,
     current_user: VendorUser = Depends(require_vendor_admin),
@@ -218,9 +223,7 @@ async def create_vendor_user(
 ) -> VendorUserResponse:
     """Create a new vendor user (vendor_admin only)."""
     # Check if email already exists
-    result = await db.execute(
-        select(VendorUser).where(VendorUser.email == data.email)
-    )
+    result = await db.execute(select(VendorUser).where(VendorUser.email == data.email))
     existing = result.scalar_one_or_none()
 
     if existing:

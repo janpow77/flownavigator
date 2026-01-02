@@ -29,12 +29,21 @@ from app.models.module_converter import (
     GitHubIntegration,
     ConversionStep,
 )
+
 # Layer 0: Vendor & Development
 from app.models.vendor import Vendor, VendorUser, VendorRole
 from app.models.customer import Customer, CustomerStatus, LicenseUsage, LicenseAlert
-from app.models.module import Module, ModuleStatus, ModuleDeployment, DeploymentStatus, ReleaseNote
+from app.models.module import (
+    Module,
+    ModuleStatus,
+    ModuleDeployment,
+    DeploymentStatus,
+    ReleaseNote,
+)
+
 # Layer 1 & 2: Profiles
 from app.models.profile import CoordinationBodyProfile, AuthorityProfile
+
 # History (Feature 7)
 from app.models.history import (
     ModuleEvent,

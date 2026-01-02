@@ -61,7 +61,11 @@ class LLMProviderFactory:
         Raises:
             LLMProviderError: If provider is not supported
         """
-        provider_name = config.provider.value if hasattr(config.provider, 'value') else config.provider
+        provider_name = (
+            config.provider.value
+            if hasattr(config.provider, "value")
+            else config.provider
+        )
 
         if provider_name not in cls._providers:
             raise LLMProviderError(f"Unsupported provider: {provider_name}")

@@ -50,3 +50,8 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "E501", "W503"]
+exclude = [".git", "__pycache__", "alembic/versions"]

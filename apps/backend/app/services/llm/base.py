@@ -55,10 +55,9 @@ class LLMResponse:
         # Approximate costs per 1K tokens (varies by model)
         cost_per_1k_prompt = 0.01
         cost_per_1k_completion = 0.03
-        return (
-            (self.prompt_tokens / 1000) * cost_per_1k_prompt +
-            (self.completion_tokens / 1000) * cost_per_1k_completion
-        )
+        return (self.prompt_tokens / 1000) * cost_per_1k_prompt + (
+            self.completion_tokens / 1000
+        ) * cost_per_1k_completion
 
 
 @dataclass
@@ -153,9 +152,7 @@ class BaseLLMProvider(ABC):
         try:
             # Simple test completion
             response = await self.complete(
-                messages=[
-                    LLMMessage(role=MessageRole.USER, content="Say 'ok'")
-                ],
+                messages=[LLMMessage(role=MessageRole.USER, content="Say 'ok'")],
                 max_tokens=10,
             )
             return bool(response.content)

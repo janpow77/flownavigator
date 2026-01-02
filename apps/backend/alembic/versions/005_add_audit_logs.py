@@ -5,6 +5,7 @@ Revises: 004
 Create Date: 2025-12-30
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,7 +21,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create audit_action enum
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audit_action') THEN
@@ -31,7 +33,8 @@ def upgrade() -> None:
                 );
             END IF;
         END$$;
-    """)
+    """
+    )
 
     # Create audit_logs table
     op.create_table(
@@ -43,9 +46,18 @@ def upgrade() -> None:
         sa.Column(
             "action",
             postgresql.ENUM(
-                "create", "update", "delete", "status_change",
-                "assign", "unassign", "upload", "download",
-                "verify", "confirm", "resolve", "comment",
+                "create",
+                "update",
+                "delete",
+                "status_change",
+                "assign",
+                "unassign",
+                "upload",
+                "download",
+                "verify",
+                "confirm",
+                "resolve",
+                "comment",
                 name="audit_action",
                 create_type=False,
             ),

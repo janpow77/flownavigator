@@ -28,7 +28,9 @@ class ModuleUpdate(BaseModel):
     """Schema for updating a module."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    version: Optional[str] = Field(None, min_length=1, max_length=20, pattern=r"^\d+\.\d+\.\d+$")
+    version: Optional[str] = Field(
+        None, min_length=1, max_length=20, pattern=r"^\d+\.\d+\.\d+$"
+    )
     description: Optional[str] = None
     status: Optional[ModuleStatus] = None
     dependencies: Optional[list[str]] = None

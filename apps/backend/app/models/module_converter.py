@@ -109,8 +109,12 @@ class LLMConfiguration(Base, TimestampMixin):
     priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
 
     # Rate limiting
-    requests_per_minute: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
-    tokens_per_minute: Mapped[int] = mapped_column(Integer, default=100000, nullable=False)
+    requests_per_minute: Mapped[int] = mapped_column(
+        Integer, default=60, nullable=False
+    )
+    tokens_per_minute: Mapped[int] = mapped_column(
+        Integer, default=100000, nullable=False
+    )
 
     # Relationships
     conversion_logs: Mapped[list["ModuleConversionLog"]] = relationship(
@@ -139,7 +143,9 @@ class ModuleTemplate(TenantModel):
         Enum(ModuleType),
         nullable=False,
     )
-    package_name: Mapped[str] = mapped_column(String(255), nullable=False)  # e.g., @flowaudit/checklists
+    package_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # e.g., @flowaudit/checklists
 
     # Source and target specifications
     source_spec: Mapped[dict[str, Any]] = mapped_column(
@@ -247,7 +253,9 @@ class ModuleConversionLog(TenantModel):
     )
 
     # Source information
-    source_type: Mapped[str] = mapped_column(String(50), nullable=False)  # github, upload, url
+    source_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # github, upload, url
     source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     source_branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_commit: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -336,13 +344,17 @@ class GitHubIntegration(Base, TimestampMixin):
 
     # GitHub connection
     github_app_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    github_installation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    github_installation_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     access_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Repository defaults
     default_owner: Mapped[str] = mapped_column(String(255), nullable=False)
     default_repo: Mapped[str] = mapped_column(String(255), nullable=False)
-    default_base_branch: Mapped[str] = mapped_column(String(255), default="main", nullable=False)
+    default_base_branch: Mapped[str] = mapped_column(
+        String(255), default="main", nullable=False
+    )
 
     # PR configuration
     pr_title_template: Mapped[str] = mapped_column(
@@ -413,7 +425,9 @@ class ConversionStep(Base, TimestampMixin):
     # Step information
     step_number: Mapped[int] = mapped_column(Integer, nullable=False)
     step_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    step_type: Mapped[str] = mapped_column(String(50), nullable=False)  # analyze, transform, validate, stage
+    step_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # analyze, transform, validate, stage
 
     # Status
     status: Mapped[str] = mapped_column(

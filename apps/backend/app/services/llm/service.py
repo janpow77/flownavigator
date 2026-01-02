@@ -175,7 +175,9 @@ class LLMService:
 
                 # Cache successful response
                 if use_cache and self.enable_caching:
-                    cache_key = self._get_cache_key(messages, str(config.id), temperature)
+                    cache_key = self._get_cache_key(
+                        messages, str(config.id), temperature
+                    )
                     self._cache[cache_key] = response
 
                 return response

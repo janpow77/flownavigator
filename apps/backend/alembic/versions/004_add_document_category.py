@@ -20,7 +20,8 @@ depends_on = None
 def upgrade() -> None:
     """Add category column to box_documents."""
     # Create the enum type
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'document_category') THEN
@@ -35,7 +36,8 @@ def upgrade() -> None:
             END IF;
         END
         $$;
-    """)
+    """
+    )
 
     # Add the column with default value
     op.add_column(

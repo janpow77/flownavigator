@@ -31,9 +31,7 @@ router = APIRouter()
 async def get_customer_summary(customer: Customer, db: AsyncSession) -> CustomerSummary:
     """Build customer summary with calculated fields."""
     # Get tenant name
-    result = await db.execute(
-        select(Tenant).where(Tenant.id == customer.tenant_id)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.id == customer.tenant_id))
     tenant = result.scalar_one_or_none()
     tenant_name = tenant.name if tenant else f"Tenant {customer.tenant_id[:8]}"
 
@@ -134,9 +132,7 @@ async def get_layer_dashboard(
 ) -> LayerDashboardResponse:
     """Get layer dashboard for vendor (AC-4.1.1: vendor_admin sees all customers)."""
     # Get vendor info
-    result = await db.execute(
-        select(Vendor).where(Vendor.id == current_user.vendor_id)
-    )
+    result = await db.execute(select(Vendor).where(Vendor.id == current_user.vendor_id))
     vendor = result.scalar_one_or_none()
 
     # Get all customers for this vendor
@@ -158,6 +154,7 @@ async def get_layer_dashboard(
 
     # Count active modules
     from app.models.module import Module, ModuleStatus
+
     result = await db.execute(
         select(func.count(Module.id)).where(Module.status == ModuleStatus.released)
     )
@@ -195,9 +192,7 @@ async def get_my_layer_dashboard(
     AC-4.1.3: authority_head sees only own authority
     """
     # Get user's tenant
-    result = await db.execute(
-        select(Tenant).where(Tenant.id == current_user.tenant_id)
-    )
+    result = await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
     tenant = result.scalar_one_or_none()
 
     if not tenant:
@@ -312,7 +307,10 @@ async def get_customer_detail(
 
 
 # Authority Detail
-@router.get("/layers/{customer_id}/authorities/{authority_id}", response_model=AuthorityDetailResponse)
+@router.get(
+    "/layers/{customer_id}/authorities/{authority_id}",
+    response_model=AuthorityDetailResponse,
+)
 async def get_authority_detail(
     customer_id: str,
     authority_id: str,
