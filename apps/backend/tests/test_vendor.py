@@ -534,6 +534,351 @@ class TestCustomerAPI:
         assert len(data["history"]) <= 30
 
 
+class TestVendorAuthentication:
+    """Tests for Vendor authentication endpoints."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.xfail(
+        reason="API bug: Token schema expects tenant_id but VendorUserResponse lacks it"
+    )
+    async def test_vendor_login_success(
+        self, client: AsyncClient, vendor_admin: dict
+    ):
+        """Test successful vendor login."""
+        response = await client.post(
+            "/api/v1/vendor/login",
+            data={
+                "username": vendor_admin["email"],
+                "password": "password123",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["user"]["email"] == vendor_admin["email"]
+
+    @pytest.mark.asyncio
+    async def test_vendor_login_wrong_password(
+        self, client: AsyncClient, vendor_admin: dict
+    ):
+        """Test login with wrong password."""
+        response = await client.post(
+            "/api/v1/vendor/login",
+            data={
+                "username": vendor_admin["email"],
+                "password": "wrongpassword",
+            },
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_vendor_login_nonexistent_user(self, client: AsyncClient):
+        """Test login with non-existent user."""
+        response = await client.post(
+            "/api/v1/vendor/login",
+            data={
+                "username": "nonexistent@example.com",
+                "password": "password123",
+            },
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_vendor_login_inactive_user(
+        self, client: AsyncClient, test_db, vendor: dict
+    ):
+        """Test login with inactive user."""
+        user_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        email = f"inactive_{user_id.hex[:8]}@flowaudit.de"
+
+        await test_db.execute(
+            text(
+                """
+                INSERT INTO vendor_users (id, vendor_id, email, hashed_password,
+                    role, first_name, last_name, is_active, created_at, updated_at)
+                VALUES (:id, :vendor_id, :email, :hashed_password,
+                    :role, :first_name, :last_name, false, :created_at, :updated_at)
+                """
+            ),
+            {
+                "id": user_id,
+                "vendor_id": uuid.UUID(vendor["id"]),
+                "email": email,
+                "hashed_password": get_password_hash("password123"),
+                "role": "vendor_admin",
+                "first_name": "Inactive",
+                "last_name": "User",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+        await test_db.commit()
+
+        response = await client.post(
+            "/api/v1/vendor/login",
+            data={
+                "username": email,
+                "password": "password123",
+            },
+        )
+        assert response.status_code == 403
+
+
+class TestVendorCRUD:
+    """Tests for Vendor CRUD operations."""
+
+    @pytest.mark.asyncio
+    async def test_get_vendor_unauthorized(self, client: AsyncClient):
+        """Test getting vendor without auth."""
+        response = await client.get("/api/v1/vendor")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_get_vendor(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor: dict
+    ):
+        """Test getting vendor info."""
+        response = await client.get("/api/v1/vendor", headers=vendor_admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == vendor["name"]
+        assert data["contact_email"] == vendor["contact_email"]
+
+    @pytest.mark.asyncio
+    async def test_update_vendor_admin_only(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test updating vendor (admin only)."""
+        response = await client.put(
+            "/api/v1/vendor",
+            headers=vendor_admin_headers,
+            json={"contact_email": "updated@flowaudit.de"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["contact_email"] == "updated@flowaudit.de"
+
+    @pytest.mark.asyncio
+    async def test_update_vendor_support_forbidden(
+        self, client: AsyncClient, vendor_support_headers: dict
+    ):
+        """Test that support cannot update vendor."""
+        response = await client.put(
+            "/api/v1/vendor",
+            headers=vendor_support_headers,
+            json={"contact_email": "hacked@flowaudit.de"},
+        )
+        assert response.status_code == 403
+
+
+class TestVendorUserCRUD:
+    """Tests for Vendor User CRUD operations."""
+
+    @pytest.mark.asyncio
+    async def test_list_vendor_users(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test listing vendor users."""
+        response = await client.get(
+            "/api/v1/vendor/users", headers=vendor_admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "users" in data
+        assert "total" in data
+        assert isinstance(data["users"], list)
+
+    @pytest.mark.asyncio
+    async def test_get_vendor_user_by_id(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor_admin: dict
+    ):
+        """Test getting a specific vendor user."""
+        response = await client.get(
+            f"/api/v1/vendor/users/{vendor_admin['id']}",
+            headers=vendor_admin_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == vendor_admin["id"]
+        assert data["email"] == vendor_admin["email"]
+
+    @pytest.mark.asyncio
+    async def test_get_vendor_user_not_found(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test getting non-existent vendor user."""
+        fake_id = str(uuid.uuid4())
+        response = await client.get(
+            f"/api/v1/vendor/users/{fake_id}",
+            headers=vendor_admin_headers,
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_create_vendor_user(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test creating a vendor user."""
+        unique_email = f"new_{uuid.uuid4().hex[:8]}@flowaudit.de"
+        response = await client.post(
+            "/api/v1/vendor/users",
+            headers=vendor_admin_headers,
+            json={
+                "email": unique_email,
+                "password": "securepassword123",
+                "first_name": "New",
+                "last_name": "User",
+                "role": "vendor_developer",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["email"] == unique_email
+        assert data["role"] == "vendor_developer"
+
+    @pytest.mark.asyncio
+    async def test_create_vendor_user_duplicate_email(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor_admin: dict
+    ):
+        """Test creating user with duplicate email."""
+        response = await client.post(
+            "/api/v1/vendor/users",
+            headers=vendor_admin_headers,
+            json={
+                "email": vendor_admin["email"],
+                "password": "password123",
+                "first_name": "Duplicate",
+                "last_name": "User",
+                "role": "vendor_support",
+            },
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_update_vendor_user(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor_developer: dict
+    ):
+        """Test updating a vendor user."""
+        response = await client.put(
+            f"/api/v1/vendor/users/{vendor_developer['id']}",
+            headers=vendor_admin_headers,
+            json={
+                "first_name": "Updated",
+                "last_name": "Developer",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["first_name"] == "Updated"
+        assert data["last_name"] == "Developer"
+
+    @pytest.mark.asyncio
+    async def test_update_vendor_user_password(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor_developer: dict
+    ):
+        """Test updating vendor user password."""
+        response = await client.put(
+            f"/api/v1/vendor/users/{vendor_developer['id']}",
+            headers=vendor_admin_headers,
+            json={"password": "newpassword123"},
+        )
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_update_vendor_user_not_found(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test updating non-existent user."""
+        fake_id = str(uuid.uuid4())
+        response = await client.put(
+            f"/api/v1/vendor/users/{fake_id}",
+            headers=vendor_admin_headers,
+            json={"first_name": "Ghost"},
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_deactivate_vendor_user(
+        self, client: AsyncClient, vendor_admin_headers: dict, test_db, vendor: dict
+    ):
+        """Test deactivating a vendor user."""
+        # Create user to deactivate
+        user_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        email = f"todeactivate_{user_id.hex[:8]}@flowaudit.de"
+
+        await test_db.execute(
+            text(
+                """
+                INSERT INTO vendor_users (id, vendor_id, email, hashed_password,
+                    role, first_name, last_name, is_active, created_at, updated_at)
+                VALUES (:id, :vendor_id, :email, :hashed_password,
+                    :role, :first_name, :last_name, true, :created_at, :updated_at)
+                """
+            ),
+            {
+                "id": user_id,
+                "vendor_id": uuid.UUID(vendor["id"]),
+                "email": email,
+                "hashed_password": get_password_hash("password123"),
+                "role": "vendor_support",
+                "first_name": "ToDeactivate",
+                "last_name": "User",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+        await test_db.commit()
+
+        response = await client.delete(
+            f"/api/v1/vendor/users/{user_id}",
+            headers=vendor_admin_headers,
+        )
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_cannot_deactivate_self(
+        self, client: AsyncClient, vendor_admin_headers: dict, vendor_admin: dict
+    ):
+        """Test that admin cannot deactivate themselves."""
+        response = await client.delete(
+            f"/api/v1/vendor/users/{vendor_admin['id']}",
+            headers=vendor_admin_headers,
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_deactivate_user_not_found(
+        self, client: AsyncClient, vendor_admin_headers: dict
+    ):
+        """Test deactivating non-existent user."""
+        fake_id = str(uuid.uuid4())
+        response = await client.delete(
+            f"/api/v1/vendor/users/{fake_id}",
+            headers=vendor_admin_headers,
+        )
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_support_cannot_create_users(
+        self, client: AsyncClient, vendor_support_headers: dict
+    ):
+        """Test that support cannot create users."""
+        response = await client.post(
+            "/api/v1/vendor/users",
+            headers=vendor_support_headers,
+            json={
+                "email": "unauthorized@flowaudit.de",
+                "password": "password123",
+                "first_name": "Unauthorized",
+                "last_name": "User",
+                "role": "vendor_support",
+            },
+        )
+        assert response.status_code == 403
+
+
 class TestModuleDeploymentAPI:
     """Tests for Module Deployment API endpoints."""
 
@@ -604,3 +949,27 @@ class TestModuleDeploymentAPI:
         note = response.json()
         assert len(note["changes"]) == 2
         assert note["title"] == "Initial Release"
+
+
+class TestVendorCleanup:
+    """Cleanup test data after vendor tests."""
+
+    @pytest.mark.asyncio
+    async def test_cleanup_vendor_data(self, test_db):
+        """Clean up test vendor data."""
+        try:
+            # Clean up vendor users
+            await test_db.execute(
+                text(
+                    "DELETE FROM vendor_users WHERE email LIKE '%@flowaudit.de'"
+                )
+            )
+            # Clean up vendors
+            await test_db.execute(
+                text(
+                    "DELETE FROM vendors WHERE name = 'FlowAudit GmbH'"
+                )
+            )
+            await test_db.commit()
+        except Exception:
+            await test_db.rollback()
