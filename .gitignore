@@ -40,6 +40,8 @@ htmlcov/
 
 # Docker volumes (local data)
 postgres-data/
+data/
+backups/
 
 # Temporary
 .tmp/

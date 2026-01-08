@@ -1,86 +1,134 @@
 #!/bin/bash
 #
 # FlowNavigator Database Backup Script
-# Usage: ./backup.sh [daily|weekly|manual]
+# Usage: ./backup.sh [daily|weekly|manual|sync|status]
 #
-# Recommended cron entries:
-# Daily backup at 2:00 AM:   0 2 * * * /path/to/backup.sh daily
-# Weekly backup on Sunday:   0 3 * * 0 /path/to/backup.sh weekly
+# Cron entries (add with: crontab -e):
+# Daily backup at 02:00:   0 2 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh daily
+# Weekly backup Sunday:    0 3 * * 0 /home/janpow/Projekte/flownavigator/scripts/backup.sh weekly
+# Sync to Google Drive:    0 4 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh sync
 #
 
 set -euo pipefail
 
 # Configuration
 BACKUP_TYPE="${1:-manual}"
-BACKUP_DIR="${BACKUP_DIR:-/home/janpow/Projekte/flownavigator/backups}"
-CONTAINER_NAME="${DB_CONTAINER:-flownavigator-db}"
-DB_USER="${DB_USER:-flowaudit}"
-DB_NAME="${DB_NAME:-flowaudit}"
+PROJECT_DIR="/home/janpow/Projekte/flownavigator"
+BACKUP_DIR="${PROJECT_DIR}/backups"
+CONTAINER_NAME="flownavigator-db"
+DB_USER="flowaudit"
+DB_NAME="flowaudit"
+GDRIVE_REMOTE="gdrive:Backups/FlowNavigator"
+
+# Retention
 RETENTION_DAYS_DAILY=7
 RETENTION_DAYS_WEEKLY=30
 RETENTION_DAYS_MANUAL=90
 
-# Create backup directory if it doesn't exist
+# Create backup directory
 mkdir -p "${BACKUP_DIR}"
 
-# Generate timestamp and filename
+# Timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="${BACKUP_DIR}/${BACKUP_TYPE}_${DB_NAME}_${TIMESTAMP}.sql.gz"
+LOG_FILE="${BACKUP_DIR}/backup.log"
 
-echo "=== FlowNavigator Database Backup ==="
-echo "Type: ${BACKUP_TYPE}"
-echo "Timestamp: ${TIMESTAMP}"
-echo "Target: ${BACKUP_FILE}"
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
+}
 
-# Check if container is running
-if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-    echo "ERROR: Container ${CONTAINER_NAME} is not running!"
-    exit 1
-fi
+# Sync to Google Drive
+sync_to_gdrive() {
+    log "=== Syncing to Google Drive ==="
 
-# Perform backup
-echo "Starting backup..."
-docker exec "${CONTAINER_NAME}" pg_dump \
-    -U "${DB_USER}" \
-    -d "${DB_NAME}" \
-    --format=plain \
-    --no-owner \
-    --no-privileges \
-    | gzip > "${BACKUP_FILE}"
+    if ! command -v rclone &> /dev/null; then
+        log "ERROR: rclone not installed"
+        return 1
+    fi
 
-# Verify backup
-if [ ! -s "${BACKUP_FILE}" ]; then
-    echo "ERROR: Backup file is empty!"
-    rm -f "${BACKUP_FILE}"
-    exit 1
-fi
+    # Sync all backups to Google Drive
+    rclone sync "${BACKUP_DIR}" "${GDRIVE_REMOTE}" \
+        --exclude "*.log" \
+        --progress \
+        2>&1 | tee -a "${LOG_FILE}"
 
-BACKUP_SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
-echo "Backup completed: ${BACKUP_SIZE}"
+    log "Sync completed"
 
-# Cleanup old backups based on type
+    # Show Google Drive contents
+    log "Google Drive contents:"
+    rclone ls "${GDRIVE_REMOTE}" 2>&1 | tee -a "${LOG_FILE}"
+}
+
+# Database backup
+backup_database() {
+    local BACKUP_FILE="${BACKUP_DIR}/${BACKUP_TYPE}_${DB_NAME}_${TIMESTAMP}.sql.gz"
+
+    log "=== FlowNavigator Database Backup ==="
+    log "Type: ${BACKUP_TYPE}"
+    log "Target: ${BACKUP_FILE}"
+
+    # Check container
+    if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        log "ERROR: Container ${CONTAINER_NAME} not running!"
+        return 1
+    fi
+
+    # Perform backup
+    log "Starting backup..."
+    docker exec "${CONTAINER_NAME}" pg_dump \
+        -U "${DB_USER}" \
+        -d "${DB_NAME}" \
+        --format=plain \
+        --no-owner \
+        --no-privileges \
+        | gzip > "${BACKUP_FILE}"
+
+    # Verify
+    if [ ! -s "${BACKUP_FILE}" ]; then
+        log "ERROR: Backup file is empty!"
+        rm -f "${BACKUP_FILE}"
+        return 1
+    fi
+
+    BACKUP_SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
+    log "Backup completed: ${BACKUP_SIZE}"
+
+    # Cleanup old backups
+    case "${BACKUP_TYPE}" in
+        daily)  RETENTION_DAYS=${RETENTION_DAYS_DAILY} ;;
+        weekly) RETENTION_DAYS=${RETENTION_DAYS_WEEKLY} ;;
+        *)      RETENTION_DAYS=${RETENTION_DAYS_MANUAL} ;;
+    esac
+
+    log "Cleaning backups older than ${RETENTION_DAYS} days..."
+    find "${BACKUP_DIR}" -name "${BACKUP_TYPE}_*.sql.gz" -type f -mtime +${RETENTION_DAYS} -delete
+
+    # List backups
+    log "Current backups:"
+    ls -lh "${BACKUP_DIR}"/*.sql.gz 2>/dev/null || log "No backups found"
+}
+
+# Main
 case "${BACKUP_TYPE}" in
-    daily)
-        RETENTION_DAYS=${RETENTION_DAYS_DAILY}
+    sync)
+        sync_to_gdrive
         ;;
-    weekly)
-        RETENTION_DAYS=${RETENTION_DAYS_WEEKLY}
+    daily|weekly|manual)
+        backup_database
+        # Auto-sync after backup
+        sync_to_gdrive
         ;;
-    manual)
-        RETENTION_DAYS=${RETENTION_DAYS_MANUAL}
+    status)
+        log "=== Backup Status ==="
+        log "Local backups:"
+        ls -lh "${BACKUP_DIR}"/*.sql.gz 2>/dev/null || log "No local backups"
+        log ""
+        log "Google Drive backups:"
+        rclone ls "${GDRIVE_REMOTE}" 2>/dev/null || log "Cannot access Google Drive"
         ;;
     *)
-        RETENTION_DAYS=${RETENTION_DAYS_MANUAL}
+        echo "Usage: $0 [daily|weekly|manual|sync|status]"
+        exit 1
         ;;
 esac
 
-echo "Cleaning up backups older than ${RETENTION_DAYS} days..."
-find "${BACKUP_DIR}" -name "${BACKUP_TYPE}_*.sql.gz" -type f -mtime +${RETENTION_DAYS} -delete
-
-# List current backups
-echo ""
-echo "Current backups:"
-ls -lh "${BACKUP_DIR}"/*.sql.gz 2>/dev/null || echo "No backups found"
-
-echo ""
-echo "=== Backup completed successfully ==="
+log "=== Done ==="
