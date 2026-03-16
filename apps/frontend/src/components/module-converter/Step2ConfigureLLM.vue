@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useModuleConverterStore } from '@/stores/moduleConverter'
 import type { LLMConfiguration, LLMProvider } from '@/types/moduleConverter'
+import EgpuPipelineWidget from './EgpuPipelineWidget.vue'
 
 const store = useModuleConverterStore()
 
@@ -363,6 +364,17 @@ function getProviderColor(provider: LLMProvider): string {
           <span v-else>Erstellen</span>
         </button>
       </div>
+    </div>
+
+    <!-- eGPU Status -->
+    <div class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+      <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-2">
+        eGPU Status
+      </h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        Echtzeit-Status der GPU-Infrastruktur und aktiver Pipelines.
+      </p>
+      <EgpuPipelineWidget app-id="flownavigator" :compact="true" />
     </div>
 
     <!-- Navigation -->
