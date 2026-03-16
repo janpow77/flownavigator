@@ -27,6 +27,8 @@ class LLMProviderFactory:
         LLMProvider.OLLAMA.value: OllamaProvider,
         # Azure uses OpenAI provider with different endpoint
         LLMProvider.AZURE_OPENAI.value: OpenAIProvider,
+        # eGPU Manager Gateway spricht OpenAI-kompatibles Protokoll
+        LLMProvider.EGPU_MANAGER.value: OllamaProvider,
     }
 
     @classmethod
