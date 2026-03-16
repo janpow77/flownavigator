@@ -33,6 +33,7 @@ class LLMProvider(str, PyEnum):
     ANTHROPIC = "anthropic"
     AZURE_OPENAI = "azure_openai"
     OLLAMA = "ollama"
+    EGPU_MANAGER = "egpu_manager"
     MISTRAL = "mistral"
     CUSTOM = "custom"
 
