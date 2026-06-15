@@ -2,30 +2,30 @@
 
 _Automatisch generiert von graphify-kira aus dem Code-Graphen. Nicht von Hand editieren — wird beim nächsten Lauf überschrieben._
 
-**Umfang:** 3088 Knoten, 5517 Kanten, 20 größere Module, 1 zirkuläre Abhängigkeiten.
+**Umfang:** 3087 Knoten, 5517 Kanten, 20 größere Module, 1 zirkuläre Abhängigkeiten.
 
 ## Modulkarte
 
-- **Module Converter** (78): `module_converter.py`, `github_service.py`, `factory.py`, `test_module_converter.py`
-- **Conversion Tracking** (69): `modules.py`, `database.py`, `DeclarativeBase`, `audit_case.py`, `base.py`
-- **Conversation Management** (64): `history.py`, `context_service.py`
-- **GitHub Integration** (62): `github_service.py`, `Exception`, `test_module_converter.py`
-- **Conversion Management** (59): `modules.py`
+- **Module Converter** (74): `module_converter.py`, `github_service.py`, `test_module_converter.py`
+- **Conversion Tracking** (71): `modules.py`, `module_converter.py`, `module_service.py`
+- **Conversation Management** (66): `modules.py`, `audit_case.py`
+- **GitHub Integration** (64): `history.py`, `context_service.py`
+- **Conversion Management** (62): `github_service.py`, `Exception`, `test_module_converter.py`
 - **Checklist Management** (55): `checklists.py`, `audit_case.py`, `checklist.py`
-- **Workflow Schemas** (54): `BaseModel`, `history.py`, `checklist.py`, `preferences.py`
+- **Workflow Schemas** (52): `database.py`, `DeclarativeBase`, `audit_case.py`, `base.py`, `str`
 - **TS Module Conversion** (51): `moduleConverter.ts`
-- **Background Conversion** (49): `modules.py`, `module_service.py`
-- **Vendor Modules API** (47): `vendor_modules.py`, `module_manager.py`, `customer.py`, `module.py`
-- **Customer Management** (47): `vendor.ts`
-- **Access Control Tests** (44): `test_audit_cases_api.py`, `test_profiles_api.py`
-- **Customer API** (43): `customers.py`, `customer.py`, `tenant.py`
-- **Package Config** (43): `package.json`, `turbo.json`
+- **Customer Management** (47): `vendor_modules.py`, `module_manager.py`, `customer.py`, `module.py`
+- **Background Conversion** (47): `vendor.ts`
+- **Vendor Modules API** (44): `test_audit_cases_api.py`, `test_profiles_api.py`
+- **Access Control Tests** (43): `customers.py`, `customer.py`, `tenant.py`
+- **Customer API** (43): `package.json`, `turbo.json`
+- **Package Config** (42): `profiles.py`, `profile.py`
 - **Document Box API** (41): `document_box.py`, `audit_case.py`
-- **Profile API** (40): `profiles.py`, `profile.py`
-- **User Preferences** (40): `App.vue`, `usePreferences.ts`, `index.ts`, `main.ts`, `preferences.ts`
-- **Frontend Dependencies** (38): `package.json`
-- **Vendor API** (35): `vendor.py`
-- **Audit Log Schema** (32): `audit_logs.py`, `audit_case.py`
+- **Profile API** (40): `App.vue`, `usePreferences.ts`, `index.ts`, `main.ts`, `preferences.ts`
+- **User Preferences** (38): `auth.py`, `security.py`, `auth_service.py`
+- **Frontend Dependencies** (38): `auth.py`, `vendor.py`, `security.py`
+- **Vendor API** (38): `package.json`
+- **Audit Log Schema** (35): `history.py`, `Enum`
 
 ## Zentrale Bausteine (God Nodes)
 
@@ -58,6 +58,12 @@ _Hohe Zentralität ist nicht automatisch ein Defekt (zentrale Stores/Modelle sin
 ## Zirkuläre Abhängigkeiten
 
 Es gibt **1** nicht-triviale Zyklen (starke Zusammenhangskomponenten) — Kandidaten zum Auflösen (Dependency-Inversion).
+
+## Empfohlene Spezialisten
+
+Passend zu Stack/Domäne dieses Projekts (Claude-Code-Agents/Skills):
+
+`/deutsche-formulierung`, `@git-workflow`, `/auto-verify`, `@alembic-migrator`, `/db-migration-helper`, `@docker-proxy-debugger`, `/docker-debug`, `/cross-project-health`, `@e2e-browser-tester`, `/modern-gui-builder`, `/ux-completeness-check`, `/vue3-gui-builder`.
 
 ## Hinweis für Änderungen
 
