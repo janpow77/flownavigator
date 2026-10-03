@@ -4,10 +4,16 @@
 **Erstellt**: 2026-01-08
 **Status**: Production Ready
 
+> **Pfade:** `$FLOWNAVIGATOR_DIR` steht für das Verzeichnis, in das dieses Repository geklont wurde
+> (z. B. `export FLOWNAVIGATOR_DIR=$HOME/flownavigator`). Die Skripte unter `scripts/` ermitteln es selbst,
+> wenn die Variable nicht gesetzt ist. In Crontab-Zeilen den absoluten Pfad eintragen (`/pfad/zu/flownavigator`).
+> `$HOME/scripts/check-backups.sh` und `DOCKER_OPERATIONS.md` sind projektübergreifende Hilfsdateien
+> außerhalb dieses Repositorys.
+
 ## Schnellstart
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Container starten
 docker-compose up -d
@@ -26,20 +32,20 @@ docker-compose up -d
 ### Haupt-Dokumentation
 - **BACKUP_RECOVERY.md** - Backup-System und Wiederherstellung nach Datenverlust
 - **README_DEPLOYMENT.md** - Diese Datei (Deployment & Tägliche Operations)
-- **/home/janpow/Projekte/DOCKER_OPERATIONS.md** - Allgemeine Docker Best Practices
+- **DOCKER_OPERATIONS.md** (projektübergreifend, nicht im Repo) - Allgemeine Docker Best Practices
 
 ### Skripte
 - `scripts/backup.sh` - Backup-Skript (täglich um 02:00 Uhr empfohlen)
 - `scripts/startup-check.sh` - Startup-Verifikation (prüft ob alle Container korrekt laufen)
 - `scripts/restore.sh` - Wiederherstellungs-Skript
-- `/home/janpow/scripts/check-backups.sh` - Backup-Monitoring (alle Projekte)
+- `$HOME/scripts/check-backups.sh` - Backup-Monitoring (alle Projekte)
 
 ## Tägliche Operations
 
 ### Container starten
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Normale Methode
 docker-compose up -d
@@ -51,7 +57,7 @@ docker-compose up -d
 ### Container stoppen
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Alle Container stoppen
 docker-compose stop
@@ -63,7 +69,7 @@ docker-compose stop
 ### Container neu starten
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Alle Container
 docker-compose restart
@@ -95,7 +101,7 @@ docker logs flownavigator-backend --tail 50
 ### Code-Änderungen deployen
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Backend (mit Hot-Reload)
 docker-compose restart backend
@@ -116,27 +122,27 @@ docker-compose up -d --build frontend
 
 ```bash
 # Tägliches Backup um 02:00 Uhr
-0 2 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh daily
+0 2 * * * /pfad/zu/flownavigator/scripts/backup.sh daily
 
 # Wöchentliches Backup Sonntags um 03:00 Uhr
-0 3 * * 0 /home/janpow/Projekte/flownavigator/scripts/backup.sh weekly
+0 3 * * 0 /pfad/zu/flownavigator/scripts/backup.sh weekly
 ```
 
 **Speicherorte:**
-- Lokal: `/home/janpow/Projekte/flownavigator/backups/`
+- Lokal: `$FLOWNAVIGATOR_DIR/backups/`
 - Cloud: `gdrive:Backups/FlowNavigator` (nach manuellem Sync)
 
 ### Manuelles Backup
 
 ```bash
 # Sofort-Backup
-/home/janpow/Projekte/flownavigator/scripts/backup.sh manual
+$FLOWNAVIGATOR_DIR/scripts/backup.sh manual
 
 # Backup-Monitoring (alle Projekte)
-/home/janpow/scripts/check-backups.sh
+$HOME/scripts/check-backups.sh
 
 # Status der Backups
-ls -lht /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -5
+ls -lht $FLOWNAVIGATOR_DIR/backups/*.sql.gz | head -5
 ```
 
 ### Backup-Wiederherstellung
@@ -146,7 +152,7 @@ ls -lht /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -5
 **Schnellreferenz:**
 ```bash
 # 1. Backup-Datei wählen
-BACKUP_FILE="/home/janpow/Projekte/flownavigator/backups/daily_flowaudit_YYYYMMDD_HHMMSS.sql.gz"
+BACKUP_FILE="$FLOWNAVIGATOR_DIR/backups/daily_flowaudit_YYYYMMDD_HHMMSS.sql.gz"
 
 # 2. Wiederherstellen
 zcat "$BACKUP_FILE" | docker exec -i flownavigator-db psql -U flowaudit -d flowaudit
@@ -219,7 +225,7 @@ docker logs flownavigator-db
 systemctl status docker
 
 # 2. Container manuell starten
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 docker-compose up -d
 
 # 3. Mit Verifikation
@@ -232,7 +238,7 @@ docker-compose up -d
 # 1. Backup wiederherstellen (siehe BACKUP_RECOVERY.md)
 
 # 2. Neuestes Backup verwenden
-BACKUP_FILE=$(ls -t /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -1)
+BACKUP_FILE=$(ls -t $FLOWNAVIGATOR_DIR/backups/*.sql.gz | head -1)
 echo "Verwende: $BACKUP_FILE"
 
 # 3. Wiederherstellen
@@ -267,13 +273,13 @@ ss -tlnp | grep -E ":(3001|8001|5436)"
 
 ```bash
 # .env Datei Berechtigungen (falls vorhanden)
-chmod 600 /home/janpow/Projekte/flownavigator/.env
+chmod 600 $FLOWNAVIGATOR_DIR/.env
 
 # Backup-Verzeichnis
-chmod 750 /home/janpow/Projekte/flownavigator/backups/
+chmod 750 $FLOWNAVIGATOR_DIR/backups/
 
 # Keine world-readable Dateien!
-find /home/janpow/Projekte/flownavigator -type f -perm -004
+find $FLOWNAVIGATOR_DIR -type f -perm -004
 ```
 
 ## Monitoring
@@ -282,10 +288,10 @@ find /home/janpow/Projekte/flownavigator -type f -perm -004
 
 ```bash
 # Startup-Verifikation (empfohlen täglich)
-/home/janpow/Projekte/flownavigator/scripts/startup-check.sh
+$FLOWNAVIGATOR_DIR/scripts/startup-check.sh
 
 # Backup-Status
-/home/janpow/scripts/check-backups.sh
+$HOME/scripts/check-backups.sh
 
 # Container-Status
 docker ps --filter "name=flownavigator"
@@ -326,7 +332,7 @@ docker system df -v | grep flownavigator
 ### Code-Updates (Git)
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # 1. Backup erstellen (Sicherheit!)
 ./scripts/backup.sh manual
@@ -348,7 +354,7 @@ docker-compose up -d
 ### Docker-Images aktualisieren
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Images aktualisieren
 docker-compose pull
@@ -368,7 +374,7 @@ docker image prune -f
 
 **Kurzfassung:**
 1. Container starten: `docker-compose up -d`
-2. Backup wählen: `ls -lht /home/janpow/Projekte/flownavigator/backups/`
+2. Backup wählen: `ls -lht $FLOWNAVIGATOR_DIR/backups/`
 3. Wiederherstellen: `zcat BACKUP | docker exec -i flownavigator-db psql ...`
 4. Backend neu starten: `docker-compose restart backend`
 5. Verifikation: `./scripts/startup-check.sh`
@@ -435,7 +441,7 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 ### Tägliche Checks (automatisiert empfohlen)
 - [ ] Backup läuft um 02:00 Uhr (cron)
-- [ ] Backup-Status prüfen: `/home/janpow/scripts/check-backups.sh`
+- [ ] Backup-Status prüfen: `$HOME/scripts/check-backups.sh`
 
 ### Wöchentliche Checks
 - [ ] Startup-Verifikation: `./scripts/startup-check.sh`
@@ -479,7 +485,7 @@ docker logs flownavigator-frontend --tail 200 > frontend.log 2>&1
 docker logs flownavigator-db --tail 200 > db.log 2>&1
 
 # docker-compose config
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 docker-compose config > ~/flownavigator_logs_$(date +%Y%m%d)/docker-compose-resolved.yml
 
 # Startup-Check

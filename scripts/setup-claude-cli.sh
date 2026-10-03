@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Setup-Script für Claude Code CLI auf NUC
+# Setup-Script für Claude Code CLI auf dem Entwicklungsrechner
 # Führt alle notwendigen Installationen durch
 #
 

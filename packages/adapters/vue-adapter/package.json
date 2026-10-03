@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/vue-adapter",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Vue 3 Komponenten und Composables für FlowAudit",
   "main": "./dist/index.js",

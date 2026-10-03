@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/checklists",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Checklisten-Modul für Prüfungen",
   "main": "./dist/index.js",

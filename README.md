@@ -2,6 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/janpow77/flownavigator/actions/workflows/ci.yml/badge.svg)](https://github.com/janpow77/flownavigator/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-%E2%89%A53.11-blue)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green)](LICENSE)
 
 **Modulare Management-Plattform für Prüfbehörden im EU-Strukturfondsbereich (EFRE): Prüfungsfälle, Checklisten, Feststellungen und Belege an einem Ort, mandantenfähig über eine Vendor-, Kunden- und Behördenebene.**
 
@@ -185,5 +186,4 @@ Alle Routen liegen unter `/api`; die vollständige Beschreibung liefert `/api/do
 
 ## Lizenz
 
-<!-- TODO: Im Repository liegt keine LICENSE-Datei. Lizenz festlegen und hier nennen. -->
-Für dieses Repository ist bislang keine Lizenz hinterlegt.
+Veröffentlicht unter der [MIT-Lizenz](LICENSE), Copyright (c) 2026 Jan Riener.

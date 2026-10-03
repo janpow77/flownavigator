@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/document-box",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Belegkasten mit KI-Prüfung",
   "main": "./dist/index.js",
