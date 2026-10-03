@@ -13,12 +13,15 @@ BACKUP_FILE="${1:-}"
 CONTAINER_NAME="${DB_CONTAINER:-flownavigator-db}"
 DB_USER="${DB_USER:-flowaudit}"
 DB_NAME="${DB_NAME:-flowaudit}"
+# Projektverzeichnis: per FLOWNAVIGATOR_DIR überschreibbar, sonst das Repo,
+# in dem dieses Skript liegt (scripts/..).
+PROJECT_DIR="${FLOWNAVIGATOR_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 if [ -z "${BACKUP_FILE}" ]; then
     echo "Usage: $0 <backup_file.sql.gz>"
     echo ""
     echo "Available backups:"
-    ls -lh /home/janpow/Projekte/flownavigator/backups/*.sql.gz 2>/dev/null || echo "No backups found"
+    ls -lh "${PROJECT_DIR}"/backups/*.sql.gz 2>/dev/null || echo "No backups found"
     exit 1
 fi
 

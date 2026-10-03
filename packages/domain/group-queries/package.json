@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/group-queries",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Konzern-Abfragen für Prüfbehörden",
   "main": "./dist/index.js",

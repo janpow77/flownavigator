@@ -3,17 +3,19 @@
 # FlowNavigator Database Backup Script
 # Usage: ./backup.sh [daily|weekly|manual|sync|status]
 #
-# Cron entries (add with: crontab -e):
-# Daily backup at 02:00:   0 2 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh daily
-# Weekly backup Sunday:    0 3 * * 0 /home/janpow/Projekte/flownavigator/scripts/backup.sh weekly
-# Sync to Google Drive:    0 4 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh sync
+# Cron entries (add with: crontab -e; <repo> = path of this repository):
+# Daily backup at 02:00:   0 2 * * * <repo>/scripts/backup.sh daily
+# Weekly backup Sunday:    0 3 * * 0 <repo>/scripts/backup.sh weekly
+# Sync to Google Drive:    0 4 * * * <repo>/scripts/backup.sh sync
 #
 
 set -euo pipefail
 
 # Configuration
 BACKUP_TYPE="${1:-manual}"
-PROJECT_DIR="/home/janpow/Projekte/flownavigator"
+# Projektverzeichnis: per FLOWNAVIGATOR_DIR überschreibbar, sonst das Repo,
+# in dem dieses Skript liegt (scripts/..).
+PROJECT_DIR="${FLOWNAVIGATOR_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BACKUP_DIR="${PROJECT_DIR}/backups"
 CONTAINER_NAME="flownavigator-db"
 DB_USER="flowaudit"

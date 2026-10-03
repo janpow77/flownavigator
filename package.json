@@ -1,6 +1,7 @@
 {
   "name": "flowaudit-platform",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "FlowAudit - Modulare Prüfbehörden-Management-Plattform",
   "packageManager": "pnpm@10.26.2",

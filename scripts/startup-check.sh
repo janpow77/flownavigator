@@ -13,7 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Konfiguration
-PROJECT_DIR="/home/janpow/Projekte/flownavigator"
+# Projektverzeichnis: per FLOWNAVIGATOR_DIR überschreibbar, sonst das Repo,
+# in dem dieses Skript liegt (scripts/..).
+PROJECT_DIR="${FLOWNAVIGATOR_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 MAX_WAIT=180  # 3 Minuten max wait time
 CHECK_INTERVAL=5
 

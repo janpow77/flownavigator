@@ -3,6 +3,12 @@
 **Erstellt**: 2026-01-08
 **Projekt**: FlowNavigator (flownavigator)
 
+> **Pfade:** `$FLOWNAVIGATOR_DIR` steht für das Verzeichnis, in das dieses Repository geklont wurde
+> (z. B. `export FLOWNAVIGATOR_DIR=$HOME/flownavigator`). Die Skripte unter `scripts/` ermitteln es selbst,
+> wenn die Variable nicht gesetzt ist. In Crontab-Zeilen den absoluten Pfad eintragen (`/pfad/zu/flownavigator`).
+> `$HOME/scripts/check-backups.sh` und `DOCKER_OPERATIONS.md` sind projektübergreifende Hilfsdateien
+> außerhalb dieses Repositorys.
+
 ## Überblick
 
 Dieser Guide beschreibt das Backup-System für flownavigator und die Wiederherstellung nach Datenverlust oder Stromausfällen.
@@ -13,15 +19,15 @@ Dieser Guide beschreibt das Backup-System für flownavigator und die Wiederherst
 
 ```bash
 # Tägliches Backup um 02:00 Uhr
-0 2 * * * /home/janpow/Projekte/flownavigator/scripts/backup.sh daily
+0 2 * * * /pfad/zu/flownavigator/scripts/backup.sh daily
 
 # Wöchentliches Backup Sonntags um 03:00 Uhr
-0 3 * * 0 /home/janpow/Projekte/flownavigator/scripts/backup.sh weekly
+0 3 * * 0 /pfad/zu/flownavigator/scripts/backup.sh weekly
 ```
 
 ### Backup-Speicherorte
 
-**Lokal**: `/home/janpow/Projekte/flownavigator/backups/`
+**Lokal**: `$FLOWNAVIGATOR_DIR/backups/`
 - Tägliche Backups werden 7 Tage aufbewahrt
 - Wöchentliche Backups werden 30 Tage aufbewahrt
 - Manuelle Backups werden 90 Tage aufbewahrt
@@ -41,17 +47,17 @@ Größe variiert je nach Datenvolumen
 
 ```bash
 # Sofortiges Backup
-/home/janpow/Projekte/flownavigator/scripts/backup.sh manual
+$FLOWNAVIGATOR_DIR/scripts/backup.sh manual
 
 # Backup-Status anzeigen
-ls -lht /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -5
+ls -lht $FLOWNAVIGATOR_DIR/backups/*.sql.gz | head -5
 ```
 
 ### Google Drive Sync (manuell)
 
 ```bash
 # Backups zu GDrive synchronisieren
-rclone sync /home/janpow/Projekte/flownavigator/backups gdrive:Backups/FlowNavigator \
+rclone sync $FLOWNAVIGATOR_DIR/backups gdrive:Backups/FlowNavigator \
     --exclude "*.log" \
     --progress
 
@@ -68,10 +74,10 @@ rclone copy gdrive:Backups/FlowNavigator/daily_flowaudit_YYYYMMDD_HHMMSS.sql.gz 
 
 ```bash
 # Liste der lokalen Backups
-ls -lh /home/janpow/Projekte/flownavigator/backups/*.sql.gz
+ls -lh $FLOWNAVIGATOR_DIR/backups/*.sql.gz
 
 # Neuestes Backup prüfen
-ls -lht /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -1
+ls -lht $FLOWNAVIGATOR_DIR/backups/*.sql.gz | head -1
 ```
 
 **WICHTIG**: Backups < 5 KB sind verdächtig! Normale Backups sind 70-110 KB oder größer.
@@ -90,7 +96,7 @@ rclone ls gdrive:Backups/FlowNavigator --max-age 25h
 
 ```bash
 # Tägliche Backup-Prüfung (empfohlen)
-/home/janpow/scripts/check-backups.sh
+$HOME/scripts/check-backups.sh
 ```
 
 ## Wiederherstellung nach Datenverlust
@@ -109,7 +115,7 @@ docker ps | grep flownavigator-db
 
 ```bash
 # Falls DB-Container nicht läuft
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 docker-compose up -d db
 
 # Container-Namen notieren
@@ -121,10 +127,10 @@ docker ps --filter "name=flownavigator-db" --format "{{.Names}}"
 **Option A: Lokales Backup (schneller)**
 ```bash
 # Liste der lokalen Backups
-ls -lht /home/janpow/Projekte/flownavigator/backups/*.sql.gz | head -5
+ls -lht $FLOWNAVIGATOR_DIR/backups/*.sql.gz | head -5
 
 # Neuestes verwenden oder spezifisches Datum wählen
-BACKUP_FILE="/home/janpow/Projekte/flownavigator/backups/daily_flowaudit_YYYYMMDD_HHMMSS.sql.gz"
+BACKUP_FILE="$FLOWNAVIGATOR_DIR/backups/daily_flowaudit_YYYYMMDD_HHMMSS.sql.gz"
 ```
 
 **Option B: Von Google Drive (falls lokal gelöscht)**
@@ -174,7 +180,7 @@ Benutzer und Projekte je nach Nutzung
 ### Schritt 6: Backend neu starten
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # Backend neu starten (führt ggf. Migrationen aus)
 docker-compose restart backend
@@ -192,7 +198,7 @@ Falls **ALLES verloren** ist (Volumes gelöscht, Container weg):
 ### 1. Volumes löschen (falls korrupt)
 
 ```bash
-cd /home/janpow/Projekte/flownavigator
+cd $FLOWNAVIGATOR_DIR
 
 # NUR wenn Volumes korrupt sind!
 docker-compose down
@@ -272,7 +278,7 @@ docker logs flownavigator-backend --tail 50
 crontab -e
 
 # Diese Zeile hinzufügen für tägliche Prüfung um 12:00 Uhr
-0 12 * * * /home/janpow/scripts/check-backups.sh >> /home/janpow/logs/backup-check.log 2>&1
+0 12 * * * /pfad/zu/home/scripts/check-backups.sh >> /pfad/zu/home/logs/backup-check.log 2>&1
 ```
 
 ## Häufige Probleme
@@ -310,10 +316,10 @@ Falls HTML zurückkommt: Frontend funktioniert!
 docker ps | grep flownavigator-db
 
 # Manuelles Backup erstellen
-/home/janpow/Projekte/flownavigator/scripts/backup.sh manual
+$FLOWNAVIGATOR_DIR/scripts/backup.sh manual
 
 # Größe prüfen
-ls -lh /home/janpow/Projekte/flownavigator/backups/*.sql.gz | tail -1
+ls -lh $FLOWNAVIGATOR_DIR/backups/*.sql.gz | tail -1
 ```
 
 ### Problem: GDrive-Sync schlägt fehl
@@ -341,13 +347,13 @@ rclone config reconnect gdrive:
 
 ```bash
 # Letzten 100 Zeilen
-tail -100 /home/janpow/Projekte/flownavigator/backups/backup.log
+tail -100 $FLOWNAVIGATOR_DIR/backups/backup.log
 
 # Nur Fehler/Warnungen
-grep -E "(ERROR|FEHLER|WARNING)" /home/janpow/Projekte/flownavigator/backups/backup.log
+grep -E "(ERROR|FEHLER|WARNING)" $FLOWNAVIGATOR_DIR/backups/backup.log
 
 # Heutiges Backup
-grep "$(date +%Y-%m-%d)" /home/janpow/Projekte/flownavigator/backups/backup.log
+grep "$(date +%Y-%m-%d)" $FLOWNAVIGATOR_DIR/backups/backup.log
 ```
 
 ### Erfolgreiche Backup-Meldungen
@@ -379,7 +385,7 @@ gpg --decrypt backup.sql.gz.gpg > backup.sql.gz
 
 ```bash
 # Backup-Verzeichnis-Berechtigungen prüfen
-ls -ld /home/janpow/Projekte/flownavigator/backups/
+ls -ld $FLOWNAVIGATOR_DIR/backups/
 
 # Sollte sein: drwxr-x--- oder ähnlich (nicht world-readable)
 ```
@@ -388,13 +394,13 @@ ls -ld /home/janpow/Projekte/flownavigator/backups/
 
 **Bei Problemen**:
 1. Logs prüfen (siehe oben)
-2. DOCKER_OPERATIONS.md lesen: `/home/janpow/Projekte/DOCKER_OPERATIONS.md`
-3. Backup-Skript prüfen: `/home/janpow/Projekte/flownavigator/scripts/backup.sh`
+2. DOCKER_OPERATIONS.md lesen (projektübergreifend, nicht im Repo)
+3. Backup-Skript prüfen: `$FLOWNAVIGATOR_DIR/scripts/backup.sh`
 
 ## Checkliste - Regelmäßige Wartung
 
 **Wöchentlich**:
-- [ ] Backup-Status prüfen: `/home/janpow/scripts/check-backups.sh`
+- [ ] Backup-Status prüfen: `$HOME/scripts/check-backups.sh`
 - [ ] GDrive-Backups verifizieren: `rclone ls gdrive:Backups/FlowNavigator`
 
 **Monatlich**:

@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/common",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Gemeinsame Typen, Utilities und Konstanten",
   "main": "./dist/index.js",

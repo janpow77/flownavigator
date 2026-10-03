@@ -1,6 +1,7 @@
 {
   "name": "@flowaudit/validation",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Validierungslogik für FlowAudit",
   "main": "./dist/index.js",
